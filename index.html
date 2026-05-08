@@ -13,7 +13,6 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f5; color: #1a1a1a; overflow: hidden; }
 #map { width: 100%; height: 100vh; }
-
 #panel {
   position: absolute; bottom: 0; left: 0; right: 0;
   background: #fff; border-radius: 20px 20px 0 0;
@@ -22,7 +21,6 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 }
 #panel.minimised { transform: translateY(calc(100% - 52px)); }
 #panel-inner { max-height: 88vh; overflow-y: auto; }
-
 #panel-handle-row {
   display: flex; align-items: center; justify-content: space-between;
   padding: 12px 16px 0; cursor: pointer;
@@ -33,84 +31,62 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   background: #fafafa; font-size: 14px; cursor: pointer;
   display: flex; align-items: center; justify-content: center; flex-shrink: 0;
 }
-
 #tabs { display: flex; border-bottom: 1px solid #eee; margin: 12px 16px 0; }
 .tab { flex: 1; padding: 10px 0; text-align: center; font-size: 14px; font-weight: 500; color: #888; border-bottom: 2px solid transparent; cursor: pointer; }
 .tab.active { color: #1D9E75; border-bottom-color: #1D9E75; }
-
 #tab-add, #tab-list, #tab-settings { padding: 16px; display: none; }
 #tab-add.active, #tab-list.active, #tab-settings.active { display: block; }
-
 label { display: block; font-size: 13px; color: #666; margin-bottom: 4px; margin-top: 14px; }
 input[type=text], textarea {
-  width: 100%; padding: 10px 12px;
-  border: 1px solid #ddd; border-radius: 10px;
+  width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 10px;
   font-size: 15px; background: #fafafa; -webkit-appearance: none;
 }
 textarea { height: 70px; resize: none; }
-
 .stars { display: flex; gap: 6px; margin-top: 4px; }
 .star { font-size: 28px; color: #ddd; cursor: pointer; }
 .star.on { color: #EF9F27; }
-
+#photo-wrap { position: relative; margin-top: 4px; }
 #photo-area {
   border: 1.5px dashed #ddd; border-radius: 12px;
-  padding: 20px; text-align: center; cursor: pointer;
-  margin-top: 4px; background: #fafafa; position: relative;
+  padding: 20px; text-align: center; cursor: pointer; background: #fafafa;
 }
-#photo-area.has-photo { border-color: #1D9E75; padding: 0; overflow: hidden; }
 #photo-preview { width: 100%; max-height: 180px; object-fit: cover; border-radius: 10px; display: none; }
 #photo-label { font-size: 13px; color: #aaa; }
-#photo-clear {
+#photo-clear-btn {
   display: none; position: absolute; top: 8px; right: 8px;
-  width: 24px; height: 24px; border-radius: 50%;
-  background: rgba(0,0,0,0.45); color: #fff; border: none;
-  font-size: 13px; cursor: pointer; line-height: 1;
-  align-items: center; justify-content: center;
+  width: 26px; height: 26px; border-radius: 50%;
+  background: rgba(0,0,0,0.5); color: #fff; border: none;
+  font-size: 14px; cursor: pointer; line-height: 26px; text-align: center;
 }
-#photo-area.has-photo #photo-clear { display: flex; }
-#photo-gps-status { font-size: 12px; color: #1D9E75; margin-top: 6px; display: none; }
-
 .type-row { display: flex; gap: 8px; align-items: center; margin-top: 4px; }
 .type-row input { flex: 1; margin: 0; }
 .type-row button { padding: 10px 14px; border-radius: 10px; border: 1px solid #ddd; background: #fafafa; font-size: 14px; cursor: pointer; white-space: nowrap; }
-
 .type-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 .type-chip {
-  padding: 6px 12px; border-radius: 999px;
-  border: 1.5px solid #eee; background: #fafafa;
-  font-size: 13px; cursor: pointer; color: #555;
-  display: flex; align-items: center; gap: 6px;
+  padding: 6px 12px; border-radius: 999px; border: 1.5px solid #eee; background: #fafafa;
+  font-size: 13px; cursor: pointer; color: #555; display: flex; align-items: center; gap: 6px;
 }
 .type-chip.active { border-color: #1D9E75; background: #e1f5ee; color: #0F6E56; font-weight: 500; }
 .type-chip .del { font-size: 11px; color: #aaa; cursor: pointer; }
-.type-chip .del:hover { color: #e24b4a; }
-
-.pin-mode-row { display: flex; gap: 8px; margin-top: 4px; flex-wrap: wrap; }
+.pin-mode-row { display: flex; gap: 8px; margin-top: 4px; }
 .pin-btn {
-  flex: 1; padding: 10px 8px; border-radius: 10px;
-  border: 1.5px solid #eee; background: #fafafa;
-  font-size: 13px; cursor: pointer; color: #555; text-align: center;
-  min-width: 80px;
+  flex: 1; padding: 10px 6px; border-radius: 10px; border: 1.5px solid #eee;
+  background: #fafafa; font-size: 13px; cursor: pointer; color: #555; text-align: center;
 }
 .pin-btn.active { border-color: #1D9E75; background: #e1f5ee; color: #0F6E56; font-weight: 500; }
-.pin-btn.disabled { opacity: 0.35; pointer-events: none; }
-
+#pin-photo-btn { display: none; }
 #tap-hint {
-  display: none; font-size: 12px; color: #888;
-  text-align: center; margin-top: 8px; padding: 8px;
-  background: #f5f5f5; border-radius: 8px;
+  display: none; font-size: 12px; color: #888; text-align: center;
+  margin-top: 8px; padding: 8px; background: #f5f5f5; border-radius: 8px;
 }
-
+#pin-info { font-size: 12px; color: #1D9E75; margin-top: 6px; display: none; }
 #crosshair {
-  display: none; position: absolute;
-  top: 50%; left: 50%; transform: translate(-50%, -50%);
-  z-index: 999; pointer-events: none;
-  font-size: 32px; font-weight: 300; color: #1D9E75;
-  text-shadow: 0 0 4px rgba(255,255,255,0.8);
+  display: none; position: absolute; top: 50%; left: 50%;
+  transform: translate(-50%, -50%); z-index: 999;
+  pointer-events: none; font-size: 36px; color: #1D9E75;
+  font-weight: 200; line-height: 1;
 }
 #crosshair.visible { display: block; }
-
 .visited-toggle {
   display: flex; align-items: center; justify-content: space-between;
   padding: 10px 14px; border-radius: 10px; border: 1px solid #ddd;
@@ -120,20 +96,17 @@ textarea { height: 70px; resize: none; }
 .toggle-switch.on { background: #1D9E75; }
 .toggle-knob { width: 20px; height: 20px; border-radius: 50%; background: #fff; position: absolute; top: 2px; left: 2px; transition: left 0.2s; }
 .toggle-switch.on .toggle-knob { left: 22px; }
-
 #add-btn {
   width: 100%; padding: 14px; background: #1D9E75; color: #fff;
   border: none; border-radius: 12px; font-size: 16px; font-weight: 500;
   cursor: pointer; margin-top: 16px;
 }
 #loc-status { font-size: 12px; color: #888; margin-top: 8px; text-align: center; }
-
 .filter-label { font-size: 12px; color: #888; margin-bottom: 6px; margin-top: 12px; }
 .filter-label:first-child { margin-top: 0; }
 .filters { display: flex; gap: 8px; flex-wrap: wrap; }
 .filter-btn { padding: 6px 14px; border-radius: 999px; border: 1px solid #ddd; background: #fafafa; font-size: 13px; cursor: pointer; color: #555; }
 .filter-btn.active { background: #1D9E75; border-color: #1D9E75; color: #fff; }
-
 .spot-card { background: #fafafa; border: 1px solid #eee; border-radius: 12px; overflow: hidden; margin-bottom: 8px; }
 .spot-card-img { width: 100%; height: 100px; object-fit: cover; display: block; }
 .spot-card-body { padding: 10px 14px; display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
@@ -145,32 +118,27 @@ textarea { height: 70px; resize: none; }
 .visited-badge { font-size: 11px; padding: 2px 8px; border-radius: 999px; font-weight: 500; }
 .visited-yes { background: #e1f5ee; color: #0F6E56; }
 .visited-no { background: #f1efe8; color: #5f5e5a; }
-.delete-btn { font-size: 18px; color: #ddd; cursor: pointer; padding: 2px 4px; flex-shrink: 0; line-height: 1; }
+.delete-btn { font-size: 18px; color: #ddd; cursor: pointer; padding: 2px 4px; flex-shrink: 0; }
 .delete-btn:hover { color: #e24b4a; }
-
 .empty { text-align: center; color: #aaa; font-size: 14px; padding: 30px 0; }
-
 #locate-btn {
   position: absolute; top: 16px; right: 16px; z-index: 999;
   width: 40px; height: 40px; border-radius: 50%;
   background: #fff; border: none; box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-  font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+  font-size: 18px; cursor: pointer;
 }
-
 #confirm-pin-btn {
   display: none; position: absolute; bottom: 70px; left: 50%; transform: translateX(-50%);
   z-index: 1001; padding: 12px 28px; background: #1D9E75; color: #fff;
-  border: none; border-radius: 999px; font-size: 15px; font-weight: 500; cursor: pointer;
-  box-shadow: 0 2px 12px rgba(0,0,0,0.15); white-space: nowrap;
+  border: none; border-radius: 999px; font-size: 15px; font-weight: 500;
+  cursor: pointer; box-shadow: 0 2px 12px rgba(0,0,0,0.2); white-space: nowrap;
 }
-
 .settings-section { margin-bottom: 24px; }
 .settings-title { font-size: 15px; font-weight: 500; margin-bottom: 8px; }
 .settings-desc { font-size: 13px; color: #888; margin-bottom: 12px; line-height: 1.5; }
 .settings-btn {
-  width: 100%; padding: 13px; border-radius: 12px;
-  border: 1px solid #ddd; background: #fafafa;
-  font-size: 15px; cursor: pointer; color: #1a1a1a;
+  width: 100%; padding: 13px; border-radius: 12px; border: 1px solid #ddd;
+  background: #fafafa; font-size: 15px; cursor: pointer; color: #1a1a1a;
   margin-bottom: 8px; text-align: left;
 }
 .settings-btn.danger { color: #e24b4a; border-color: #f09595; background: #fcebeb; }
@@ -178,7 +146,6 @@ textarea { height: 70px; resize: none; }
 </style>
 </head>
 <body>
-
 <div id="map"></div>
 <div id="crosshair">+</div>
 <button id="locate-btn" onclick="flyToUser()">📍</button>
@@ -198,13 +165,14 @@ textarea { height: 70px; resize: none; }
 
     <div id="tab-add" class="active">
       <label>Photo</label>
-      <div id="photo-area" onclick="document.getElementById('photoInput').click()">
-        <img id="photo-preview">
-        <div id="photo-label">Tap to add photo</div>
-        <button id="photo-clear" onclick="event.stopPropagation();clearPhoto()">✕</button>
+      <div id="photo-wrap">
+        <div id="photo-area" onclick="document.getElementById('photoInput').click()">
+          <img id="photo-preview" alt="">
+          <div id="photo-label">Tap to add photo</div>
+        </div>
+        <button id="photo-clear-btn" onclick="clearPhoto()">✕</button>
       </div>
-      <div id="photo-gps-status"></div>
-      <input type="file" id="photoInput" accept="image/*" style="display:none" onchange="handlePhoto(this)">
+      <input type="file" id="photoInput" accept="image/*" capture="environment" style="display:none" onchange="handlePhoto(this)">
 
       <label>Name</label>
       <input type="text" id="spotName" placeholder="e.g. Sunrise Rock">
@@ -221,12 +189,12 @@ textarea { height: 70px; resize: none; }
 
       <label>Pin location</label>
       <div class="pin-mode-row">
-        <div class="pin-btn active" id="pinGps" onclick="setPinMode('gps')">My location</div>
-        <div class="pin-btn" id="pinMap" onclick="setPinMode('map')">Tap map</div>
-        <div class="pin-btn disabled" id="pinPhoto" onclick="setPinMode('photo')">From photo</div>
+        <div class="pin-btn active" id="pin-gps-btn" onclick="setPinMode('gps')">My location</div>
+        <div class="pin-btn" id="pin-map-btn" onclick="setPinMode('map')">Tap map</div>
+        <div class="pin-btn" id="pin-photo-btn" onclick="setPinMode('photo')">From photo</div>
       </div>
-      <div id="tap-hint">Minimise this panel, drag the map to your spot, then hit "Set pin here".</div>
-      <div id="pin-coords" style="font-size:12px;color:#1D9E75;margin-top:6px;display:none;"></div>
+      <div id="tap-hint">Minimise the panel, drag the map to your spot, then tap "Set pin here".</div>
+      <div id="pin-info"></div>
 
       <label>Visited</label>
       <div class="visited-toggle" onclick="toggleVisited()">
@@ -254,7 +222,7 @@ textarea { height: 70px; resize: none; }
     <div id="tab-settings">
       <div class="settings-section">
         <div class="settings-title">Backup & restore</div>
-        <div class="settings-desc">Export saves all your spots and types to a JSON file. Import loads them back — useful if you switch phones or clear your browser data.</div>
+        <div class="settings-desc">Export saves all your spots and types to a JSON file. Import loads them back.</div>
         <button class="settings-btn" onclick="exportData()">Export backup...</button>
         <button class="settings-btn" onclick="document.getElementById('importInput').click()">Import backup...</button>
         <input type="file" id="importInput" accept=".json" style="display:none" onchange="importData(this)">
@@ -270,47 +238,48 @@ textarea { height: 70px; resize: none; }
 
 <script>
 const TYPE_COLORS = ['#378ADD','#1D9E75','#D85A30','#534AB7','#BA7517','#D4537E','#639922','#888780','#E24B4A','#0F6E56'];
-let colorIndex = 0;
-
+let colorIdx = 0;
 let map, userLat = -26.65, userLon = 153.09, userMarker;
-let spots = JSON.parse(localStorage.getItem('spots') || '[]');
-let types = JSON.parse(localStorage.getItem('types') || '[]');
-let typeColorMap = JSON.parse(localStorage.getItem('typeColorMap') || '{}');
+let spots = [], types = [], typeColorMap = {};
 let markers = [];
-let currentRating = 0, selectedSpotType = null, visitedState = false;
+let currentRating = 0, selectedType = null, visitedState = false;
 let photoData = null, photoLat = null, photoLon = null;
 let pinMode = 'gps', mapPinLat = null, mapPinLon = null;
 let filterType = 'all', filterRating = 0, filterVisited = 'all';
 let panelMinimised = false;
 
+function loadStorage() {
+  try { spots = JSON.parse(localStorage.getItem('spots') || '[]'); } catch(e) { spots = []; }
+  try { types = JSON.parse(localStorage.getItem('types') || '[]'); } catch(e) { types = []; }
+  try { typeColorMap = JSON.parse(localStorage.getItem('typeColorMap') || '{}'); } catch(e) { typeColorMap = {}; }
+}
+
 function save() {
   localStorage.setItem('spots', JSON.stringify(spots));
   localStorage.setItem('types', JSON.stringify(types));
   localStorage.setItem('typeColorMap', JSON.stringify(typeColorMap));
-  updateSettingsStat();
+  document.getElementById('settings-stat').textContent = spots.length + ' spot' + (spots.length !== 1 ? 's' : '') + ' saved';
 }
 
-function updateSettingsStat() {
-  document.getElementById('settings-stat').textContent = `${spots.length} spot${spots.length!==1?'s':''} saved`;
-}
+loadStorage();
 
 map = L.map('map', { zoomControl: false }).setView([userLat, userLon], 13);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  attribution: '© OpenStreetMap',
-  maxZoom: 19
+  attribution: '© OpenStreetMap', maxZoom: 19
 }).addTo(map);
 L.control.zoom({ position: 'topright' }).addTo(map);
 
 userMarker = L.circleMarker([userLat, userLon], {
-  radius: 8, fillColor: '#378ADD', color: '#fff', weight: 2, fillOpacity: 1, zIndexOffset: 1000
-}).addTo(map).bindPopup('You');
+  radius: 8, fillColor: '#378ADD', color: '#fff', weight: 2, fillOpacity: 1
+}).addTo(map).bindPopup('You are here');
 
 if (navigator.geolocation) {
-  navigator.geolocation.watchPosition(pos => {
-    userLat = pos.coords.latitude; userLon = pos.coords.longitude;
+  navigator.geolocation.watchPosition(function(pos) {
+    userLat = pos.coords.latitude;
+    userLon = pos.coords.longitude;
     userMarker.setLatLng([userLat, userLon]);
     document.getElementById('loc-status').textContent = 'Location ready';
-  }, () => {
+  }, function() {
     document.getElementById('loc-status').textContent = 'Location unavailable';
   }, { enableHighAccuracy: true });
 }
@@ -324,73 +293,74 @@ function toggleMinimise() {
 }
 
 function setPinMode(mode) {
-  if (mode === 'photo' && !photoLat) return;
   pinMode = mode;
-  document.getElementById('pinGps').classList.toggle('active', mode==='gps');
-  document.getElementById('pinMap').classList.toggle('active', mode==='map');
-  document.getElementById('pinPhoto').classList.toggle('active', mode==='photo');
-  const hint = document.getElementById('tap-hint');
-  const crosshair = document.getElementById('crosshair');
-  const confirmBtn = document.getElementById('confirm-pin-btn');
-  const coords = document.getElementById('pin-coords');
+  document.getElementById('pin-gps-btn').classList.toggle('active', mode === 'gps');
+  document.getElementById('pin-map-btn').classList.toggle('active', mode === 'map');
+  document.getElementById('pin-photo-btn').classList.toggle('active', mode === 'photo');
+  var hint = document.getElementById('tap-hint');
+  var info = document.getElementById('pin-info');
+  var crosshair = document.getElementById('crosshair');
+  var confirmBtn = document.getElementById('confirm-pin-btn');
   if (mode === 'map') {
     hint.style.display = 'block';
     crosshair.classList.add('visible');
     confirmBtn.style.display = 'block';
-    coords.style.display = 'none';
+    info.style.display = 'none';
     if (!panelMinimised) toggleMinimise();
   } else {
     hint.style.display = 'none';
     crosshair.classList.remove('visible');
     confirmBtn.style.display = 'none';
-    mapPinLat = null; mapPinLon = null;
-    if (mode === 'photo' && photoLat) {
-      coords.style.display = 'block';
-      coords.textContent = `Using photo GPS: ${photoLat.toFixed(5)}, ${photoLon.toFixed(5)}`;
-    } else {
-      coords.style.display = 'none';
+    if (mode === 'photo' && photoLat !== null) {
+      info.style.display = 'block';
+      info.style.color = '#1D9E75';
+      info.textContent = 'Using photo GPS: ' + photoLat.toFixed(5) + ', ' + photoLon.toFixed(5);
+    } else if (mode === 'gps') {
+      info.style.display = 'none';
+      mapPinLat = null; mapPinLon = null;
     }
   }
 }
 
 function confirmMapPin() {
-  const center = map.getCenter();
-  mapPinLat = center.lat; mapPinLon = center.lng;
+  var c = map.getCenter();
+  mapPinLat = c.lat; mapPinLon = c.lng;
   document.getElementById('confirm-pin-btn').style.display = 'none';
   document.getElementById('crosshair').classList.remove('visible');
   document.getElementById('tap-hint').style.display = 'none';
-  const coords = document.getElementById('pin-coords');
-  coords.style.display = 'block';
-  coords.textContent = `Pin set: ${mapPinLat.toFixed(5)}, ${mapPinLon.toFixed(5)}`;
+  var info = document.getElementById('pin-info');
+  info.style.display = 'block';
+  info.style.color = '#1D9E75';
+  info.textContent = 'Pin set: ' + mapPinLat.toFixed(5) + ', ' + mapPinLon.toFixed(5);
   if (panelMinimised) toggleMinimise();
 }
 
 async function handlePhoto(input) {
-  const file = input.files[0];
+  var file = input.files[0];
   if (!file) return;
-  const reader = new FileReader();
-  reader.onload = async e => {
+  var reader = new FileReader();
+  reader.onload = async function(e) {
     photoData = e.target.result;
-    const preview = document.getElementById('photo-preview');
-    preview.src = photoData; preview.style.display = 'block';
+    var preview = document.getElementById('photo-preview');
+    preview.src = photoData;
+    preview.style.display = 'block';
     document.getElementById('photo-label').style.display = 'none';
-    document.getElementById('photo-area').classList.add('has-photo');
+    document.getElementById('photo-clear-btn').style.display = 'block';
     try {
-      const exif = await exifr.parse(file, ['GPSLatitude','GPSLongitude']);
-      if (exif && exif.latitude && exif.longitude) {
-        photoLat = exif.latitude; photoLon = exif.longitude;
-        document.getElementById('pinPhoto').classList.remove('disabled');
+      var exif = await exifr.parse(file, ['GPSLatitude', 'GPSLongitude']);
+      if (exif && typeof exif.latitude === 'number' && typeof exif.longitude === 'number') {
+        photoLat = exif.latitude;
+        photoLon = exif.longitude;
+        document.getElementById('pin-photo-btn').style.display = 'block';
         setPinMode('photo');
       } else {
         photoLat = null; photoLon = null;
-        document.getElementById('pinPhoto').classList.add('disabled');
-        if (pinMode === 'photo') setPinMode('gps');
+        document.getElementById('pin-photo-btn').style.display = 'none';
       }
-    } catch(e) {
+    } catch(err) {
       photoLat = null; photoLon = null;
-      document.getElementById('pinPhoto').classList.add('disabled');
+      document.getElementById('pin-photo-btn').style.display = 'none';
     }
-    document.getElementById('photo-gps-status').style.display = 'none';
   };
   reader.readAsDataURL(file);
 }
@@ -400,51 +370,60 @@ function clearPhoto() {
   document.getElementById('photo-preview').style.display = 'none';
   document.getElementById('photo-preview').src = '';
   document.getElementById('photo-label').style.display = 'block';
-  document.getElementById('photo-area').classList.remove('has-photo');
-  document.getElementById('photo-gps-status').style.display = 'none';
+  document.getElementById('photo-clear-btn').style.display = 'none';
   document.getElementById('photoInput').value = '';
-  document.getElementById('pinPhoto').classList.add('disabled');
-  document.getElementById('pin-coords').style.display = 'none';
+  document.getElementById('pin-photo-btn').style.display = 'none';
   if (pinMode === 'photo') setPinMode('gps');
 }
 
 function addType() {
-  const input = document.getElementById('newTypeInput');
-  const val = input.value.trim();
-  if (!val || types.includes(val)) { input.value = ''; return; }
+  var input = document.getElementById('newTypeInput');
+  var val = input.value.trim();
+  if (!val || types.indexOf(val) > -1) { input.value = ''; return; }
   types.push(val);
-  if (!typeColorMap[val]) { typeColorMap[val] = TYPE_COLORS[colorIndex % TYPE_COLORS.length]; colorIndex++; }
+  if (!typeColorMap[val]) { typeColorMap[val] = TYPE_COLORS[colorIdx % TYPE_COLORS.length]; colorIdx++; }
   save(); input.value = '';
-  selectedSpotType = val;
+  selectedType = val;
   renderTypeChips(); buildFilters();
 }
 
 function removeType(t) {
-  types = types.filter(x => x !== t);
-  if (selectedSpotType === t) selectedSpotType = null;
+  types = types.filter(function(x) { return x !== t; });
+  if (selectedType === t) selectedType = null;
   save(); renderTypeChips(); buildFilters();
 }
 
 function renderTypeChips() {
-  const el = document.getElementById('typeChips');
-  if (!types.length) { el.innerHTML = '<div style="font-size:13px;color:#aaa;margin-top:4px;">No types yet — add one above</div>'; return; }
-  el.innerHTML = types.map(t => `
-    <div class="type-chip ${selectedSpotType===t?'active':''}" onclick="selectType('${t}')">
-      <span style="width:8px;height:8px;border-radius:50%;background:${typeColorMap[t]||'#888'};display:inline-block;"></span>
-      ${t}
-      <span class="del" onclick="event.stopPropagation();removeType('${t}')">✕</span>
-    </div>
-  `).join('');
+  var el = document.getElementById('typeChips');
+  if (!types.length) {
+    el.innerHTML = '<div style="font-size:13px;color:#aaa;margin-top:4px;">No types yet — add one above</div>';
+    return;
+  }
+  el.innerHTML = types.map(function(t) {
+    return '<div class="type-chip' + (selectedType === t ? ' active' : '') + '" onclick="selectType(\'' + t + '\')">'
+      + '<span style="width:8px;height:8px;border-radius:50%;background:' + (typeColorMap[t] || '#888') + ';display:inline-block;"></span>'
+      + t
+      + '<span class="del" onclick="event.stopPropagation();removeType(\'' + t + '\')">✕</span>'
+      + '</div>';
+  }).join('');
 }
 
-function selectType(t) { selectedSpotType = t; renderTypeChips(); }
+function selectType(t) { selectedType = t; renderTypeChips(); }
 
-const starsEl = document.getElementById('stars');
-for (let i = 1; i <= 5; i++) {
-  const s = document.createElement('span');
-  s.className = 'star'; s.textContent = '★'; s.dataset.v = i;
-  s.onclick = () => { currentRating = i; document.querySelectorAll('.star').forEach(st => st.classList.toggle('on', parseInt(st.dataset.v) <= i)); };
-  starsEl.appendChild(s);
+var starsEl = document.getElementById('stars');
+for (var i = 1; i <= 5; i++) {
+  (function(val) {
+    var s = document.createElement('span');
+    s.className = 'star'; s.textContent = '★';
+    s.onclick = function() {
+      currentRating = val;
+      document.querySelectorAll('.star').forEach(function(st) {
+        st.classList.toggle('on', parseInt(st.dataset.v) <= val);
+      });
+    };
+    s.dataset.v = val;
+    starsEl.appendChild(s);
+  })(i);
 }
 
 function toggleVisited() {
@@ -454,25 +433,28 @@ function toggleVisited() {
 }
 
 function addSpot() {
-  const name = document.getElementById('spotName').value.trim();
+  var name = document.getElementById('spotName').value.trim();
   if (!name) { alert('Add a name!'); return; }
   if (!currentRating) { alert('Pick a star rating!'); return; }
-  let lat, lon;
+  var lat, lon;
   if (pinMode === 'map') {
-    if (!mapPinLat) { alert('Set a pin location on the map first!'); return; }
+    if (mapPinLat === null) { alert('Set a pin on the map first!'); return; }
     lat = mapPinLat; lon = mapPinLon;
-  } else if (pinMode === 'photo' && photoLat) {
+  } else if (pinMode === 'photo' && photoLat !== null) {
     lat = photoLat; lon = photoLon;
   } else {
     lat = userLat; lon = userLon;
   }
-  const spot = {
-    id: Date.now(), name, type: selectedSpotType, rating: currentRating,
+  if (isNaN(lat) || isNaN(lon)) { alert('Could not get a valid location. Try again.'); return; }
+  var spot = {
+    id: Date.now(), name: name, type: selectedType, rating: currentRating,
     visited: visitedState, note: document.getElementById('spotNote').value.trim(),
-    photo: photoData, lat, lon
+    photo: photoData, lat: lat, lon: lon
   };
-  spots.push(spot); save();
-  placeMarker(spot); applyMarkers(); renderList();
+  spots.push(spot);
+  save();
+  addMarkerForSpot(spot);
+  renderList();
   resetAddForm();
   map.flyTo([lat, lon], 15);
   switchTab('list');
@@ -483,166 +465,192 @@ function resetAddForm() {
   document.getElementById('spotName').value = '';
   document.getElementById('spotNote').value = '';
   currentRating = 0;
-  document.querySelectorAll('.star').forEach(s => s.classList.remove('on'));
+  document.querySelectorAll('.star').forEach(function(s) { s.classList.remove('on'); });
   visitedState = false;
   document.getElementById('visitedToggle').classList.remove('on');
   document.getElementById('visited-label').textContent = 'Not visited yet';
   mapPinLat = null; mapPinLon = null;
-  document.getElementById('pin-coords').style.display = 'none';
-  setPinMode('gps');
-  document.getElementById('loc-status').textContent = 'Location ready';
+  document.getElementById('pin-info').style.display = 'none';
+  document.getElementById('tap-hint').style.display = 'none';
+  document.getElementById('crosshair').classList.remove('visible');
+  document.getElementById('confirm-pin-btn').style.display = 'none';
+  pinMode = 'gps';
+  document.getElementById('pin-gps-btn').classList.add('active');
+  document.getElementById('pin-map-btn').classList.remove('active');
+  document.getElementById('pin-photo-btn').classList.remove('active');
+  document.getElementById('pin-photo-btn').style.display = 'none';
+}
+
+function addMarkerForSpot(spot) {
+  if (isNaN(spot.lat) || isNaN(spot.lon)) return;
+  var color = (spot.type && typeColorMap[spot.type]) ? typeColorMap[spot.type] : '#888780';
+  var m = L.circleMarker([spot.lat, spot.lon], {
+    radius: 9, fillColor: color, color: '#fff', weight: 2,
+    fillOpacity: spot.visited ? 0.95 : 0.55
+  });
+  m.addTo(map);
+  var stars = '★'.repeat(spot.rating) + '☆'.repeat(5 - spot.rating);
+  var popup = (spot.photo ? '<img src="' + spot.photo + '" style="width:100%;height:100px;object-fit:cover;border-radius:6px;margin-bottom:6px;display:block;">' : '')
+    + '<b>' + spot.name + '</b><br>'
+    + (spot.type ? spot.type + ' · ' : '') + stars + '<br>'
+    + '<small style="color:#888">' + (spot.visited ? 'Visited' : 'Not visited') + '</small>'
+    + (spot.note ? '<br><small>' + spot.note + '</small>' : '');
+  m.bindPopup(popup, { maxWidth: 220 });
+  markers.push({ id: spot.id, marker: m, spot: spot });
+}
+
+function applyMarkers() {
+  markers.forEach(function(item) {
+    var show = (filterType === 'all' || item.spot.type === filterType)
+      && item.spot.rating >= filterRating
+      && (filterVisited === 'all'
+        || (filterVisited === 'visited' && item.spot.visited)
+        || (filterVisited === 'not' && !item.spot.visited));
+    if (show) { if (!map.hasLayer(item.marker)) map.addLayer(item.marker); }
+    else { if (map.hasLayer(item.marker)) map.removeLayer(item.marker); }
+  });
 }
 
 function deleteSpot(id) {
   if (!confirm('Delete this spot?')) return;
-  spots = spots.filter(s => s.id !== id); save();
-  const m = markers.find(m => m.id === id);
-  if (m) { map.removeLayer(m.marker); markers = markers.filter(m => m.id !== id); }
+  spots = spots.filter(function(s) { return s.id !== id; });
+  save();
+  var idx = markers.findIndex(function(m) { return m.id === id; });
+  if (idx > -1) { map.removeLayer(markers[idx].marker); markers.splice(idx, 1); }
   renderList();
 }
 
 function exportData() {
-  const data = { spots, types, typeColorMap, exported: new Date().toISOString() };
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
+  var data = { spots: spots, types: types, typeColorMap: typeColorMap, exported: new Date().toISOString() };
+  var blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
   a.href = url;
-  a.download = `spot-logger-backup-${new Date().toISOString().slice(0,10)}.json`;
+  a.download = 'spot-logger-backup-' + new Date().toISOString().slice(0, 10) + '.json';
   a.click();
   URL.revokeObjectURL(url);
 }
 
 function importData(input) {
-  const file = input.files[0];
+  var file = input.files[0];
   if (!file) return;
-  const reader = new FileReader();
-  reader.onload = e => {
+  var reader = new FileReader();
+  reader.onload = function(e) {
     try {
-      const data = JSON.parse(e.target.result);
+      var data = JSON.parse(e.target.result);
       if (!data.spots || !Array.isArray(data.spots)) { alert('Invalid backup file.'); return; }
-      if (!confirm(`Import ${data.spots.length} spots? This will replace your current data.`)) return;
+      if (!confirm('Import ' + data.spots.length + ' spots? This will replace your current data.')) return;
       spots = data.spots; types = data.types || []; typeColorMap = data.typeColorMap || {};
       save();
-      markers.forEach(m => map.removeLayer(m.marker)); markers = [];
-      spots.forEach(placeMarker); applyMarkers();
+      markers.forEach(function(m) { map.removeLayer(m.marker); });
+      markers = [];
+      spots.forEach(addMarkerForSpot);
+      applyMarkers();
       renderTypeChips(); buildFilters(); renderList();
       alert('Import successful!');
-    } catch(e) { alert('Could not read backup file.'); }
+    } catch(err) { alert('Could not read backup file.'); }
   };
   reader.readAsText(file);
   input.value = '';
 }
 
 function clearAllData() {
-  if (!confirm(`Delete all ${spots.length} spots? This cannot be undone.`)) return;
+  if (!confirm('Delete all ' + spots.length + ' spots? This cannot be undone.')) return;
   spots = []; save();
-  markers.forEach(m => map.removeLayer(m.marker)); markers = [];
+  markers.forEach(function(m) { map.removeLayer(m.marker); });
+  markers = [];
   renderList();
 }
 
-function placeMarker(spot) {
-  const color = (spot.type && typeColorMap[spot.type]) ? typeColorMap[spot.type] : '#888780';
-  const m = L.circleMarker([spot.lat, spot.lon], {
-    radius: 9, fillColor: color, color: '#fff',
-    weight: 2, fillOpacity: spot.visited ? 0.95 : 0.5,
-    bubblingMouseEvents: false
-  }).addTo(map);
-  const starsHtml = '★'.repeat(spot.rating) + '☆'.repeat(5 - spot.rating);
-  m.bindPopup(`
-    ${spot.photo ? `<img src="${spot.photo}" style="width:100%;height:100px;object-fit:cover;border-radius:6px;margin-bottom:6px;display:block;">` : ''}
-    <b>${spot.name}</b><br>
-    ${spot.type ? spot.type + ' · ' : ''}${starsHtml}<br>
-    <small style="color:#888">${spot.visited ? 'Visited' : 'Not visited'}</small>
-    ${spot.note ? '<br><small>' + spot.note + '</small>' : ''}
-  `, { maxWidth: 220 });
-  markers.push({ id: spot.id, marker: m, spot });
-}
-
-function applyMarkers() {
-  markers.forEach(({marker, spot}) => {
-    const ok = (filterType==='all' || spot.type===filterType)
-      && spot.rating >= filterRating
-      && (filterVisited==='all' || (filterVisited==='visited' && spot.visited) || (filterVisited==='not' && !spot.visited));
-    if (ok) { if (!map.hasLayer(marker)) map.addLayer(marker); }
-    else { if (map.hasLayer(marker)) map.removeLayer(marker); }
-  });
-}
-
 function buildFilters() {
-  const tf = document.getElementById('typeFilters');
+  var tf = document.getElementById('typeFilters');
   tf.innerHTML = '';
-  ['all', ...types].forEach(t => {
-    const b = document.createElement('button');
+  ['all'].concat(types).forEach(function(t) {
+    var b = document.createElement('button');
     b.className = 'filter-btn' + (t === filterType ? ' active' : '');
     b.textContent = t === 'all' ? 'All' : t;
-    b.onclick = () => { filterType = t; document.querySelectorAll('#typeFilters .filter-btn').forEach(x => x.classList.remove('active')); b.classList.add('active'); renderList(); applyMarkers(); };
+    b.onclick = function() {
+      filterType = t;
+      document.querySelectorAll('#typeFilters .filter-btn').forEach(function(x) { x.classList.remove('active'); });
+      b.classList.add('active'); renderList(); applyMarkers();
+    };
     tf.appendChild(b);
   });
-  const rf = document.getElementById('ratingFilters');
+  var rf = document.getElementById('ratingFilters');
   rf.innerHTML = '';
-  [{label:'Any',val:0},{label:'3+',val:3},{label:'4+',val:4},{label:'5 only',val:5}].forEach(r => {
-    const b = document.createElement('button');
+  [{label:'Any',val:0},{label:'3+',val:3},{label:'4+',val:4},{label:'5 only',val:5}].forEach(function(r) {
+    var b = document.createElement('button');
     b.className = 'filter-btn' + (r.val === filterRating ? ' active' : '');
     b.textContent = r.label;
-    b.onclick = () => { filterRating = r.val; document.querySelectorAll('#ratingFilters .filter-btn').forEach(x => x.classList.remove('active')); b.classList.add('active'); renderList(); applyMarkers(); };
+    b.onclick = function() {
+      filterRating = r.val;
+      document.querySelectorAll('#ratingFilters .filter-btn').forEach(function(x) { x.classList.remove('active'); });
+      b.classList.add('active'); renderList(); applyMarkers();
+    };
     rf.appendChild(b);
   });
-  const vf = document.getElementById('visitedFilters');
+  var vf = document.getElementById('visitedFilters');
   vf.innerHTML = '';
-  [{label:'All',val:'all'},{label:'Visited',val:'visited'},{label:'Not visited',val:'not'}].forEach(v => {
-    const b = document.createElement('button');
+  [{label:'All',val:'all'},{label:'Visited',val:'visited'},{label:'Not visited',val:'not'}].forEach(function(v) {
+    var b = document.createElement('button');
     b.className = 'filter-btn' + (v.val === filterVisited ? ' active' : '');
     b.textContent = v.label;
-    b.onclick = () => { filterVisited = v.val; document.querySelectorAll('#visitedFilters .filter-btn').forEach(x => x.classList.remove('active')); b.classList.add('active'); renderList(); applyMarkers(); };
+    b.onclick = function() {
+      filterVisited = v.val;
+      document.querySelectorAll('#visitedFilters .filter-btn').forEach(function(x) { x.classList.remove('active'); });
+      b.classList.add('active'); renderList(); applyMarkers();
+    };
     vf.appendChild(b);
   });
 }
 
 function renderList() {
-  const filtered = spots.filter(s =>
-    (filterType==='all' || s.type===filterType) && s.rating >= filterRating &&
-    (filterVisited==='all' || (filterVisited==='visited' && s.visited) || (filterVisited==='not' && !s.visited))
-  ).reverse();
-  const el = document.getElementById('spotList');
+  var filtered = spots.filter(function(s) {
+    return (filterType === 'all' || s.type === filterType)
+      && s.rating >= filterRating
+      && (filterVisited === 'all' || (filterVisited === 'visited' && s.visited) || (filterVisited === 'not' && !s.visited));
+  }).reverse();
+  var el = document.getElementById('spotList');
   if (!filtered.length) { el.innerHTML = '<div class="empty">No spots match your filters</div>'; return; }
-  el.innerHTML = filtered.map(s => `
-    <div class="spot-card">
-      ${s.photo ? `<img class="spot-card-img" src="${s.photo}">` : ''}
-      <div class="spot-card-body">
-        <div class="spot-card-info" onclick="flyToSpot(${s.id})">
-          <div class="spot-name">${s.name}</div>
-          <div class="spot-meta">
-            ${s.type ? `<span class="spot-dot" style="background:${typeColorMap[s.type]||'#888'}"></span>${s.type}` : ''}
-            <span class="spot-stars">${'★'.repeat(s.rating)}${'☆'.repeat(5-s.rating)}</span>
-            <span class="visited-badge ${s.visited?'visited-yes':'visited-no'}">${s.visited?'Visited':'Not visited'}</span>
-          </div>
-          ${s.note ? `<div style="font-size:12px;color:#666;margin-top:4px;">${s.note}</div>` : ''}
-        </div>
-        <span class="delete-btn" onclick="deleteSpot(${s.id})">✕</span>
-      </div>
-    </div>
-  `).join('');
+  el.innerHTML = filtered.map(function(s) {
+    var stars = '★'.repeat(s.rating) + '☆'.repeat(5 - s.rating);
+    var color = (s.type && typeColorMap[s.type]) ? typeColorMap[s.type] : '#888';
+    return '<div class="spot-card">'
+      + (s.photo ? '<img class="spot-card-img" src="' + s.photo + '">' : '')
+      + '<div class="spot-card-body">'
+      + '<div class="spot-card-info" onclick="flyToSpot(' + s.id + ')">'
+      + '<div class="spot-name">' + s.name + '</div>'
+      + '<div class="spot-meta">'
+      + (s.type ? '<span class="spot-dot" style="background:' + color + '"></span>' + s.type : '')
+      + '<span class="spot-stars">' + stars + '</span>'
+      + '<span class="visited-badge ' + (s.visited ? 'visited-yes' : 'visited-no') + '">' + (s.visited ? 'Visited' : 'Not visited') + '</span>'
+      + '</div>'
+      + (s.note ? '<div style="font-size:12px;color:#666;margin-top:4px;">' + s.note + '</div>' : '')
+      + '</div>'
+      + '<span class="delete-btn" onclick="deleteSpot(' + s.id + ')">✕</span>'
+      + '</div></div>';
+  }).join('');
 }
 
 function flyToSpot(id) {
-  const m = markers.find(m => m.id === id);
+  var m = markers.find(function(m) { return m.id === id; });
   if (m) { map.flyTo([m.spot.lat, m.spot.lon], 16); m.marker.openPopup(); if (!panelMinimised) toggleMinimise(); }
 }
 
 function switchTab(tab) {
-  ['add','list','settings'].forEach(t => {
-    document.getElementById('tab-'+t).classList.toggle('active', t===tab);
+  ['add','list','settings'].forEach(function(t) {
+    document.getElementById('tab-' + t).classList.toggle('active', t === tab);
   });
-  document.querySelectorAll('.tab').forEach((el,i) => {
-    el.classList.toggle('active', ['add','list','settings'][i]===tab);
+  document.querySelectorAll('.tab').forEach(function(el, i) {
+    el.classList.toggle('active', ['add','list','settings'][i] === tab);
   });
 }
 
-spots.forEach(placeMarker);
+spots.forEach(addMarkerForSpot);
 renderTypeChips();
 buildFilters();
 renderList();
-updateSettingsStat();
+document.getElementById('settings-stat').textContent = spots.length + ' spot' + (spots.length !== 1 ? 's' : '') + ' saved';
 </script>
 </body>
 </html>
