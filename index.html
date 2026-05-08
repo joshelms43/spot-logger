@@ -56,11 +56,19 @@ textarea { height: 70px; resize: none; }
 #photo-area {
   border: 1.5px dashed #ddd; border-radius: 12px;
   padding: 20px; text-align: center; cursor: pointer;
-  margin-top: 4px; background: #fafafa;
+  margin-top: 4px; background: #fafafa; position: relative;
 }
 #photo-area.has-photo { border-color: #1D9E75; padding: 0; overflow: hidden; }
 #photo-preview { width: 100%; max-height: 180px; object-fit: cover; border-radius: 10px; display: none; }
 #photo-label { font-size: 13px; color: #aaa; }
+#photo-clear {
+  display: none; position: absolute; top: 8px; right: 8px;
+  width: 24px; height: 24px; border-radius: 50%;
+  background: rgba(0,0,0,0.45); color: #fff; border: none;
+  font-size: 13px; cursor: pointer; line-height: 1;
+  align-items: center; justify-content: center;
+}
+#photo-area.has-photo #photo-clear { display: flex; }
 #photo-gps-status { font-size: 12px; color: #1D9E75; margin-top: 6px; display: none; }
 
 .type-row { display: flex; gap: 8px; align-items: center; margin-top: 4px; }
@@ -78,13 +86,15 @@ textarea { height: 70px; resize: none; }
 .type-chip .del { font-size: 11px; color: #aaa; cursor: pointer; }
 .type-chip .del:hover { color: #e24b4a; }
 
-.pin-mode-row { display: flex; gap: 8px; margin-top: 4px; }
+.pin-mode-row { display: flex; gap: 8px; margin-top: 4px; flex-wrap: wrap; }
 .pin-btn {
   flex: 1; padding: 10px 8px; border-radius: 10px;
   border: 1.5px solid #eee; background: #fafafa;
   font-size: 13px; cursor: pointer; color: #555; text-align: center;
+  min-width: 80px;
 }
 .pin-btn.active { border-color: #1D9E75; background: #e1f5ee; color: #0F6E56; font-weight: 500; }
+.pin-btn.disabled { opacity: 0.35; pointer-events: none; }
 
 #tap-hint {
   display: none; font-size: 12px; color: #888;
@@ -95,7 +105,9 @@ textarea { height: 70px; resize: none; }
 #crosshair {
   display: none; position: absolute;
   top: 50%; left: 50%; transform: translate(-50%, -50%);
-  z-index: 999; pointer-events: none; font-size: 28px;
+  z-index: 999; pointer-events: none;
+  font-size: 32px; font-weight: 300; color: #1D9E75;
+  text-shadow: 0 0 4px rgba(255,255,255,0.8);
 }
 #crosshair.visible { display: block; }
 
@@ -189,6 +201,7 @@ textarea { height: 70px; resize: none; }
       <div id="photo-area" onclick="document.getElementById('photoInput').click()">
         <img id="photo-preview">
         <div id="photo-label">Tap to add photo</div>
+        <button id="photo-clear" onclick="event.stopPropagation();clearPhoto()">✕</button>
       </div>
       <div id="photo-gps-status"></div>
       <input type="file" id="photoInput" accept="image/*" style="display:none" onchange="handlePhoto(this)">
@@ -210,9 +223,10 @@ textarea { height: 70px; resize: none; }
       <div class="pin-mode-row">
         <div class="pin-btn active" id="pinGps" onclick="setPinMode('gps')">My location</div>
         <div class="pin-btn" id="pinMap" onclick="setPinMode('map')">Tap map</div>
-        <div class="pin-btn" id="pinPhoto" onclick="setPinMode('photo')" style="display:none">From photo</div>
+        <div class="pin-btn disabled" id="pinPhoto" onclick="setPinMode('photo')">From photo</div>
       </div>
       <div id="tap-hint">Minimise this panel, drag the map to your spot, then hit "Set pin here".</div>
+      <div id="pin-coords" style="font-size:12px;color:#1D9E75;margin-top:6px;display:none;"></div>
 
       <label>Visited</label>
       <div class="visited-toggle" onclick="toggleVisited()">
@@ -246,7 +260,6 @@ textarea { height: 70px; resize: none; }
         <input type="file" id="importInput" accept=".json" style="display:none" onchange="importData(this)">
         <div class="settings-stat" id="settings-stat"></div>
       </div>
-
       <div class="settings-section">
         <div class="settings-title">Danger zone</div>
         <button class="settings-btn danger" onclick="clearAllData()">Delete all spots</button>
@@ -282,10 +295,15 @@ function updateSettingsStat() {
 }
 
 map = L.map('map', { zoomControl: false }).setView([userLat, userLon], 13);
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '© OpenStreetMap',
+  maxZoom: 19
+}).addTo(map);
 L.control.zoom({ position: 'topright' }).addTo(map);
 
-userMarker = L.circleMarker([userLat, userLon], { radius: 8, fillColor: '#378ADD', color: '#fff', weight: 2, fillOpacity: 1 }).addTo(map).bindPopup('You');
+userMarker = L.circleMarker([userLat, userLon], {
+  radius: 8, fillColor: '#378ADD', color: '#fff', weight: 2, fillOpacity: 1, zIndexOffset: 1000
+}).addTo(map).bindPopup('You');
 
 if (navigator.geolocation) {
   navigator.geolocation.watchPosition(pos => {
@@ -306,6 +324,7 @@ function toggleMinimise() {
 }
 
 function setPinMode(mode) {
+  if (mode === 'photo' && !photoLat) return;
   pinMode = mode;
   document.getElementById('pinGps').classList.toggle('active', mode==='gps');
   document.getElementById('pinMap').classList.toggle('active', mode==='map');
@@ -313,16 +332,24 @@ function setPinMode(mode) {
   const hint = document.getElementById('tap-hint');
   const crosshair = document.getElementById('crosshair');
   const confirmBtn = document.getElementById('confirm-pin-btn');
+  const coords = document.getElementById('pin-coords');
   if (mode === 'map') {
     hint.style.display = 'block';
     crosshair.classList.add('visible');
     confirmBtn.style.display = 'block';
+    coords.style.display = 'none';
     if (!panelMinimised) toggleMinimise();
   } else {
     hint.style.display = 'none';
     crosshair.classList.remove('visible');
     confirmBtn.style.display = 'none';
     mapPinLat = null; mapPinLon = null;
+    if (mode === 'photo' && photoLat) {
+      coords.style.display = 'block';
+      coords.textContent = `Using photo GPS: ${photoLat.toFixed(5)}, ${photoLon.toFixed(5)}`;
+    } else {
+      coords.style.display = 'none';
+    }
   }
 }
 
@@ -332,7 +359,9 @@ function confirmMapPin() {
   document.getElementById('confirm-pin-btn').style.display = 'none';
   document.getElementById('crosshair').classList.remove('visible');
   document.getElementById('tap-hint').style.display = 'none';
-  document.getElementById('loc-status').textContent = `Pin set at ${mapPinLat.toFixed(5)}, ${mapPinLon.toFixed(5)}`;
+  const coords = document.getElementById('pin-coords');
+  coords.style.display = 'block';
+  coords.textContent = `Pin set: ${mapPinLat.toFixed(5)}, ${mapPinLon.toFixed(5)}`;
   if (panelMinimised) toggleMinimise();
 }
 
@@ -350,20 +379,33 @@ async function handlePhoto(input) {
       const exif = await exifr.parse(file, ['GPSLatitude','GPSLongitude']);
       if (exif && exif.latitude && exif.longitude) {
         photoLat = exif.latitude; photoLon = exif.longitude;
-        const s = document.getElementById('photo-gps-status');
-        s.style.display = 'block';
-        s.textContent = `GPS found — ${photoLat.toFixed(5)}, ${photoLon.toFixed(5)}`;
-        s.style.color = '#1D9E75'; s.style.fontSize = '12px'; s.style.marginTop = '6px';
-        document.getElementById('pinPhoto').style.display = 'block';
+        document.getElementById('pinPhoto').classList.remove('disabled');
         setPinMode('photo');
       } else {
         photoLat = null; photoLon = null;
-        document.getElementById('photo-gps-status').style.display = 'none';
-        document.getElementById('pinPhoto').style.display = 'none';
+        document.getElementById('pinPhoto').classList.add('disabled');
+        if (pinMode === 'photo') setPinMode('gps');
       }
-    } catch(e) { photoLat = null; photoLon = null; }
+    } catch(e) {
+      photoLat = null; photoLon = null;
+      document.getElementById('pinPhoto').classList.add('disabled');
+    }
+    document.getElementById('photo-gps-status').style.display = 'none';
   };
   reader.readAsDataURL(file);
+}
+
+function clearPhoto() {
+  photoData = null; photoLat = null; photoLon = null;
+  document.getElementById('photo-preview').style.display = 'none';
+  document.getElementById('photo-preview').src = '';
+  document.getElementById('photo-label').style.display = 'block';
+  document.getElementById('photo-area').classList.remove('has-photo');
+  document.getElementById('photo-gps-status').style.display = 'none';
+  document.getElementById('photoInput').value = '';
+  document.getElementById('pinPhoto').classList.add('disabled');
+  document.getElementById('pin-coords').style.display = 'none';
+  if (pinMode === 'photo') setPinMode('gps');
 }
 
 function addType() {
@@ -424,7 +466,11 @@ function addSpot() {
   } else {
     lat = userLat; lon = userLon;
   }
-  const spot = { id: Date.now(), name, type: selectedSpotType, rating: currentRating, visited: visitedState, note: document.getElementById('spotNote').value.trim(), photo: photoData, lat, lon };
+  const spot = {
+    id: Date.now(), name, type: selectedSpotType, rating: currentRating,
+    visited: visitedState, note: document.getElementById('spotNote').value.trim(),
+    photo: photoData, lat, lon
+  };
   spots.push(spot); save();
   placeMarker(spot); applyMarkers(); renderList();
   resetAddForm();
@@ -433,30 +479,23 @@ function addSpot() {
 }
 
 function resetAddForm() {
+  clearPhoto();
   document.getElementById('spotName').value = '';
   document.getElementById('spotNote').value = '';
-  document.getElementById('photo-preview').style.display = 'none';
-  document.getElementById('photo-preview').src = '';
-  document.getElementById('photo-label').style.display = 'block';
-  document.getElementById('photo-area').classList.remove('has-photo');
-  document.getElementById('photo-gps-status').style.display = 'none';
-  document.getElementById('photoInput').value = '';
-  document.getElementById('pinPhoto').style.display = 'none';
-  photoData = null; photoLat = null; photoLon = null;
   currentRating = 0;
   document.querySelectorAll('.star').forEach(s => s.classList.remove('on'));
   visitedState = false;
   document.getElementById('visitedToggle').classList.remove('on');
   document.getElementById('visited-label').textContent = 'Not visited yet';
   mapPinLat = null; mapPinLon = null;
+  document.getElementById('pin-coords').style.display = 'none';
   setPinMode('gps');
   document.getElementById('loc-status').textContent = 'Location ready';
 }
 
 function deleteSpot(id) {
   if (!confirm('Delete this spot?')) return;
-  spots = spots.filter(s => s.id !== id);
-  save();
+  spots = spots.filter(s => s.id !== id); save();
   const m = markers.find(m => m.id === id);
   if (m) { map.removeLayer(m.marker); markers = markers.filter(m => m.id !== id); }
   renderList();
@@ -482,17 +521,11 @@ function importData(input) {
       const data = JSON.parse(e.target.result);
       if (!data.spots || !Array.isArray(data.spots)) { alert('Invalid backup file.'); return; }
       if (!confirm(`Import ${data.spots.length} spots? This will replace your current data.`)) return;
-      spots = data.spots;
-      types = data.types || [];
-      typeColorMap = data.typeColorMap || {};
+      spots = data.spots; types = data.types || []; typeColorMap = data.typeColorMap || {};
       save();
-      markers.forEach(m => map.removeLayer(m.marker));
-      markers = [];
-      spots.forEach(placeMarker);
-      applyMarkers();
-      renderTypeChips();
-      buildFilters();
-      renderList();
+      markers.forEach(m => map.removeLayer(m.marker)); markers = [];
+      spots.forEach(placeMarker); applyMarkers();
+      renderTypeChips(); buildFilters(); renderList();
       alert('Import successful!');
     } catch(e) { alert('Could not read backup file.'); }
   };
@@ -502,68 +535,73 @@ function importData(input) {
 
 function clearAllData() {
   if (!confirm(`Delete all ${spots.length} spots? This cannot be undone.`)) return;
-  spots = [];
-  save();
-  markers.forEach(m => map.removeLayer(m.marker));
-  markers = [];
+  spots = []; save();
+  markers.forEach(m => map.removeLayer(m.marker)); markers = [];
   renderList();
 }
 
 function placeMarker(spot) {
   const color = (spot.type && typeColorMap[spot.type]) ? typeColorMap[spot.type] : '#888780';
-  const m = L.circleMarker([spot.lat, spot.lon], { radius: 8, fillColor: color, color: '#fff', weight: 2, fillOpacity: spot.visited ? 0.95 : 0.45 }).addTo(map);
+  const m = L.circleMarker([spot.lat, spot.lon], {
+    radius: 9, fillColor: color, color: '#fff',
+    weight: 2, fillOpacity: spot.visited ? 0.95 : 0.5,
+    bubblingMouseEvents: false
+  }).addTo(map);
+  const starsHtml = '★'.repeat(spot.rating) + '☆'.repeat(5 - spot.rating);
   m.bindPopup(`
     ${spot.photo ? `<img src="${spot.photo}" style="width:100%;height:100px;object-fit:cover;border-radius:6px;margin-bottom:6px;display:block;">` : ''}
     <b>${spot.name}</b><br>
-    ${spot.type ? spot.type+' · ' : ''}${'★'.repeat(spot.rating)}${'☆'.repeat(5-spot.rating)}<br>
-    <small style="color:#888">${spot.visited?'Visited':'Not visited'}</small>
-    ${spot.note ? '<br><small>'+spot.note+'</small>' : ''}
-  `);
+    ${spot.type ? spot.type + ' · ' : ''}${starsHtml}<br>
+    <small style="color:#888">${spot.visited ? 'Visited' : 'Not visited'}</small>
+    ${spot.note ? '<br><small>' + spot.note + '</small>' : ''}
+  `, { maxWidth: 220 });
   markers.push({ id: spot.id, marker: m, spot });
 }
 
 function applyMarkers() {
   markers.forEach(({marker, spot}) => {
-    const ok = (filterType==='all'||spot.type===filterType) && spot.rating>=filterRating &&
-      (filterVisited==='all'||(filterVisited==='visited'&&spot.visited)||(filterVisited==='not'&&!spot.visited));
-    if (ok) map.addLayer(marker); else map.removeLayer(marker);
+    const ok = (filterType==='all' || spot.type===filterType)
+      && spot.rating >= filterRating
+      && (filterVisited==='all' || (filterVisited==='visited' && spot.visited) || (filterVisited==='not' && !spot.visited));
+    if (ok) { if (!map.hasLayer(marker)) map.addLayer(marker); }
+    else { if (map.hasLayer(marker)) map.removeLayer(marker); }
   });
 }
 
 function buildFilters() {
   const tf = document.getElementById('typeFilters');
   tf.innerHTML = '';
-  ['all',...types].forEach(t => {
+  ['all', ...types].forEach(t => {
     const b = document.createElement('button');
-    b.className = 'filter-btn'+(t===filterType?' active':'');
-    b.textContent = t==='all'?'All':t;
-    b.onclick = () => { filterType=t; document.querySelectorAll('#typeFilters .filter-btn').forEach(x=>x.classList.remove('active')); b.classList.add('active'); renderList(); applyMarkers(); };
+    b.className = 'filter-btn' + (t === filterType ? ' active' : '');
+    b.textContent = t === 'all' ? 'All' : t;
+    b.onclick = () => { filterType = t; document.querySelectorAll('#typeFilters .filter-btn').forEach(x => x.classList.remove('active')); b.classList.add('active'); renderList(); applyMarkers(); };
     tf.appendChild(b);
   });
   const rf = document.getElementById('ratingFilters');
   rf.innerHTML = '';
   [{label:'Any',val:0},{label:'3+',val:3},{label:'4+',val:4},{label:'5 only',val:5}].forEach(r => {
     const b = document.createElement('button');
-    b.className = 'filter-btn'+(r.val===filterRating?' active':'');
+    b.className = 'filter-btn' + (r.val === filterRating ? ' active' : '');
     b.textContent = r.label;
-    b.onclick = () => { filterRating=r.val; document.querySelectorAll('#ratingFilters .filter-btn').forEach(x=>x.classList.remove('active')); b.classList.add('active'); renderList(); applyMarkers(); };
+    b.onclick = () => { filterRating = r.val; document.querySelectorAll('#ratingFilters .filter-btn').forEach(x => x.classList.remove('active')); b.classList.add('active'); renderList(); applyMarkers(); };
     rf.appendChild(b);
   });
   const vf = document.getElementById('visitedFilters');
   vf.innerHTML = '';
   [{label:'All',val:'all'},{label:'Visited',val:'visited'},{label:'Not visited',val:'not'}].forEach(v => {
     const b = document.createElement('button');
-    b.className = 'filter-btn'+(v.val===filterVisited?' active':'');
+    b.className = 'filter-btn' + (v.val === filterVisited ? ' active' : '');
     b.textContent = v.label;
-    b.onclick = () => { filterVisited=v.val; document.querySelectorAll('#visitedFilters .filter-btn').forEach(x=>x.classList.remove('active')); b.classList.add('active'); renderList(); applyMarkers(); };
+    b.onclick = () => { filterVisited = v.val; document.querySelectorAll('#visitedFilters .filter-btn').forEach(x => x.classList.remove('active')); b.classList.add('active'); renderList(); applyMarkers(); };
     vf.appendChild(b);
   });
 }
 
 function renderList() {
   const filtered = spots.filter(s =>
-    (filterType==='all'||s.type===filterType) && s.rating>=filterRating &&
-    (filterVisited==='all'||(filterVisited==='visited'&&s.visited)||(filterVisited==='not'&&!s.visited))
+    (filterType==='all' || s.type===filterType) && s.rating >= filterRating &&
+    (filterVisited==='all' || (filterVisited==='visited' && s.visited) || (filterVisited==='not' && !s.visited))
   ).reverse();
   const el = document.getElementById('spotList');
   if (!filtered.length) { el.innerHTML = '<div class="empty">No spots match your filters</div>'; return; }
@@ -592,10 +630,12 @@ function flyToSpot(id) {
 }
 
 function switchTab(tab) {
-  document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', (i===0&&tab==='add')||(i===1&&tab==='list')||(i===2&&tab==='settings')));
-  document.getElementById('tab-add').classList.toggle('active', tab==='add');
-  document.getElementById('tab-list').classList.toggle('active', tab==='list');
-  document.getElementById('tab-settings').classList.toggle('active', tab==='settings');
+  ['add','list','settings'].forEach(t => {
+    document.getElementById('tab-'+t).classList.toggle('active', t===tab);
+  });
+  document.querySelectorAll('.tab').forEach((el,i) => {
+    el.classList.toggle('active', ['add','list','settings'][i]===tab);
+  });
 }
 
 spots.forEach(placeMarker);
