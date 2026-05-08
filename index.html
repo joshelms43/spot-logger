@@ -1,1 +1,529 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>Spot Logger</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/exifr@7.1.3/dist/lite.umd.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f5; color: #1a1a1a; overflow: hidden; }
+#map { width: 100%; height: 100vh; }
 
+#panel {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  background: #fff; border-radius: 20px 20px 0 0;
+  box-shadow: 0 -2px 20px rgba(0,0,0,0.12);
+  z-index: 1000;
+  transition: transform 0.3s ease;
+}
+#panel.minimised { transform: translateY(calc(100% - 52px)); }
+#panel-inner { max-height: 88vh; overflow-y: auto; }
+
+#panel-handle-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 16px 0; cursor: pointer;
+}
+#panel-handle { width: 36px; height: 4px; background: #ddd; border-radius: 2px; margin: 0 auto; flex: 1; }
+#minimise-btn {
+  width: 28px; height: 28px; border-radius: 50%; border: 1px solid #eee;
+  background: #fafafa; font-size: 14px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+
+#tabs { display: flex; border-bottom: 1px solid #eee; margin: 12px 16px 0; }
+.tab { flex: 1; padding: 10px 0; text-align: center; font-size: 14px; font-weight: 500; color: #888; border-bottom: 2px solid transparent; cursor: pointer; }
+.tab.active { color: #1D9E75; border-bottom-color: #1D9E75; }
+
+#tab-add, #tab-list { padding: 16px; display: none; }
+#tab-add.active, #tab-list.active { display: block; }
+
+label { display: block; font-size: 13px; color: #666; margin-bottom: 4px; margin-top: 14px; }
+input[type=text], textarea {
+  width: 100%; padding: 10px 12px;
+  border: 1px solid #ddd; border-radius: 10px;
+  font-size: 15px; background: #fafafa; -webkit-appearance: none;
+}
+textarea { height: 70px; resize: none; }
+
+.stars { display: flex; gap: 6px; margin-top: 4px; }
+.star { font-size: 28px; color: #ddd; cursor: pointer; }
+.star.on { color: #EF9F27; }
+
+#photo-area {
+  border: 1.5px dashed #ddd; border-radius: 12px;
+  padding: 20px; text-align: center; cursor: pointer;
+  margin-top: 4px; background: #fafafa;
+}
+#photo-area.has-photo { border-color: #1D9E75; padding: 0; overflow: hidden; }
+#photo-preview { width: 100%; max-height: 180px; object-fit: cover; border-radius: 10px; display: none; }
+#photo-label { font-size: 13px; color: #aaa; }
+#photo-gps-status { font-size: 12px; color: #1D9E75; margin-top: 6px; display: none; }
+
+.type-row { display: flex; gap: 8px; align-items: center; margin-top: 4px; }
+.type-row input { flex: 1; margin: 0; }
+.type-row button { padding: 10px 14px; border-radius: 10px; border: 1px solid #ddd; background: #fafafa; font-size: 14px; cursor: pointer; white-space: nowrap; }
+
+.type-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.type-chip {
+  padding: 6px 12px; border-radius: 999px;
+  border: 1.5px solid #eee; background: #fafafa;
+  font-size: 13px; cursor: pointer; color: #555;
+  display: flex; align-items: center; gap: 6px;
+}
+.type-chip.active { border-color: #1D9E75; background: #e1f5ee; color: #0F6E56; font-weight: 500; }
+.type-chip .del { font-size: 11px; color: #aaa; cursor: pointer; }
+.type-chip .del:hover { color: #e24b4a; }
+
+.pin-mode-row {
+  display: flex; gap: 8px; margin-top: 4px;
+}
+.pin-btn {
+  flex: 1; padding: 10px 8px; border-radius: 10px;
+  border: 1.5px solid #eee; background: #fafafa;
+  font-size: 13px; cursor: pointer; color: #555; text-align: center;
+}
+.pin-btn.active { border-color: #1D9E75; background: #e1f5ee; color: #0F6E56; font-weight: 500; }
+
+#tap-hint {
+  display: none; font-size: 12px; color: #888;
+  text-align: center; margin-top: 8px; padding: 8px;
+  background: #f5f5f5; border-radius: 8px;
+}
+#tap-hint.visible { display: block; }
+
+#crosshair {
+  display: none; position: absolute;
+  top: 50%; left: 50%; transform: translate(-50%, -50%);
+  z-index: 999; pointer-events: none; font-size: 28px;
+}
+#crosshair.visible { display: block; }
+
+.visited-toggle {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 14px; border-radius: 10px; border: 1px solid #ddd;
+  background: #fafafa; margin-top: 4px; cursor: pointer;
+}
+.toggle-switch { width: 44px; height: 24px; border-radius: 12px; background: #ddd; position: relative; transition: background 0.2s; }
+.toggle-switch.on { background: #1D9E75; }
+.toggle-knob { width: 20px; height: 20px; border-radius: 50%; background: #fff; position: absolute; top: 2px; left: 2px; transition: left 0.2s; }
+.toggle-switch.on .toggle-knob { left: 22px; }
+
+#add-btn {
+  width: 100%; padding: 14px; background: #1D9E75; color: #fff;
+  border: none; border-radius: 12px; font-size: 16px; font-weight: 500;
+  cursor: pointer; margin-top: 16px;
+}
+#loc-status { font-size: 12px; color: #888; margin-top: 8px; text-align: center; }
+
+.filter-label { font-size: 12px; color: #888; margin-bottom: 6px; margin-top: 12px; }
+.filter-label:first-child { margin-top: 0; }
+.filters { display: flex; gap: 8px; flex-wrap: wrap; }
+.filter-btn { padding: 6px 14px; border-radius: 999px; border: 1px solid #ddd; background: #fafafa; font-size: 13px; cursor: pointer; color: #555; }
+.filter-btn.active { background: #1D9E75; border-color: #1D9E75; color: #fff; }
+
+.spot-card { background: #fafafa; border: 1px solid #eee; border-radius: 12px; overflow: hidden; margin-bottom: 8px; }
+.spot-card-img { width: 100%; height: 100px; object-fit: cover; display: block; }
+.spot-card-body { padding: 10px 14px; display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.spot-card-info { flex: 1; cursor: pointer; }
+.spot-name { font-size: 15px; font-weight: 500; }
+.spot-meta { font-size: 12px; color: #888; margin-top: 3px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.spot-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.spot-stars { color: #EF9F27; font-size: 12px; }
+.visited-badge { font-size: 11px; padding: 2px 8px; border-radius: 999px; font-weight: 500; }
+.visited-yes { background: #e1f5ee; color: #0F6E56; }
+.visited-no { background: #f1efe8; color: #5f5e5a; }
+.delete-btn { font-size: 18px; color: #ddd; cursor: pointer; padding: 2px 4px; flex-shrink: 0; line-height: 1; }
+.delete-btn:hover { color: #e24b4a; }
+
+.empty { text-align: center; color: #aaa; font-size: 14px; padding: 30px 0; }
+
+#locate-btn {
+  position: absolute; top: 16px; right: 16px; z-index: 999;
+  width: 40px; height: 40px; border-radius: 50%;
+  background: #fff; border: none; box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+}
+
+#confirm-pin-btn {
+  display: none; position: absolute; bottom: 70px; left: 50%; transform: translateX(-50%);
+  z-index: 1001; padding: 12px 28px; background: #1D9E75; color: #fff;
+  border: none; border-radius: 999px; font-size: 15px; font-weight: 500; cursor: pointer;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.15); white-space: nowrap;
+}
+</style>
+</head>
+<body>
+
+<div id="map"></div>
+<div id="crosshair">+</div>
+<button id="locate-btn" onclick="flyToUser()">📍</button>
+<button id="confirm-pin-btn" onclick="confirmMapPin()">Set pin here</button>
+
+<div id="panel">
+  <div id="panel-handle-row" onclick="toggleMinimise()">
+    <div id="panel-handle"></div>
+    <button id="minimise-btn" onclick="event.stopPropagation();toggleMinimise()">▾</button>
+  </div>
+  <div id="panel-inner">
+    <div id="tabs">
+      <div class="tab active" onclick="switchTab('add')">Add spot</div>
+      <div class="tab" onclick="switchTab('list')">My spots</div>
+    </div>
+
+    <div id="tab-add" class="active">
+      <label>Photo</label>
+      <div id="photo-area" onclick="document.getElementById('photoInput').click()">
+        <img id="photo-preview">
+        <div id="photo-label">Tap to add photo</div>
+      </div>
+      <div id="photo-gps-status">GPS found in photo</div>
+      <input type="file" id="photoInput" accept="image/*" style="display:none" onchange="handlePhoto(this)">
+
+      <label>Name</label>
+      <input type="text" id="spotName" placeholder="e.g. Sunrise Rock">
+
+      <label>Type</label>
+      <div class="type-row">
+        <input type="text" id="newTypeInput" placeholder="Add a type...">
+        <button onclick="addType()">Add</button>
+      </div>
+      <div class="type-chips" id="typeChips"></div>
+
+      <label>Rating</label>
+      <div class="stars" id="stars"></div>
+
+      <label>Pin location</label>
+      <div class="pin-mode-row">
+        <div class="pin-btn active" id="pinGps" onclick="setPinMode('gps')">Use my location</div>
+        <div class="pin-btn" id="pinMap" onclick="setPinMode('map')">Tap on map</div>
+        <div class="pin-btn" id="pinPhoto" onclick="setPinMode('photo')" style="display:none">From photo</div>
+      </div>
+      <div id="tap-hint" class="visible" style="display:none;">Minimise this panel, then drag the map to where you want the pin. Hit "Set pin here" when ready.</div>
+
+      <label>Visited</label>
+      <div class="visited-toggle" onclick="toggleVisited()">
+        <span id="visited-label">Not visited yet</span>
+        <div class="toggle-switch" id="visitedToggle"><div class="toggle-knob"></div></div>
+      </div>
+
+      <label>Notes (optional)</label>
+      <textarea id="spotNote" placeholder="What makes it special?"></textarea>
+
+      <div id="loc-status">Getting your location...</div>
+      <button id="add-btn" onclick="addSpot()">Drop pin</button>
+    </div>
+
+    <div id="tab-list">
+      <div class="filter-label">Type</div>
+      <div class="filters" id="typeFilters"></div>
+      <div class="filter-label">Min rating</div>
+      <div class="filters" id="ratingFilters"></div>
+      <div class="filter-label">Visited</div>
+      <div class="filters" id="visitedFilters"></div>
+      <div id="spotList" style="margin-top:12px;"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const TYPE_COLORS = ['#378ADD','#1D9E75','#D85A30','#534AB7','#BA7517','#D4537E','#639922','#888780','#E24B4A','#0F6E56'];
+let colorIndex = 0;
+
+let map, userLat = -26.65, userLon = 153.09, userMarker;
+let spots = JSON.parse(localStorage.getItem('spots') || '[]');
+let types = JSON.parse(localStorage.getItem('types') || '[]');
+let typeColorMap = JSON.parse(localStorage.getItem('typeColorMap') || '{}');
+let markers = [];
+let currentRating = 0, selectedSpotType = null, visitedState = false;
+let photoData = null, photoLat = null, photoLon = null;
+let pinMode = 'gps', mapPinLat = null, mapPinLon = null;
+let filterType = 'all', filterRating = 0, filterVisited = 'all';
+let panelMinimised = false;
+
+function save() {
+  localStorage.setItem('spots', JSON.stringify(spots));
+  localStorage.setItem('types', JSON.stringify(types));
+  localStorage.setItem('typeColorMap', JSON.stringify(typeColorMap));
+}
+
+map = L.map('map', { zoomControl: false }).setView([userLat, userLon], 13);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map);
+L.control.zoom({ position: 'topright' }).addTo(map);
+
+userMarker = L.circleMarker([userLat, userLon], { radius: 8, fillColor: '#378ADD', color: '#fff', weight: 2, fillOpacity: 1 }).addTo(map).bindPopup('You');
+
+if (navigator.geolocation) {
+  navigator.geolocation.watchPosition(pos => {
+    userLat = pos.coords.latitude; userLon = pos.coords.longitude;
+    userMarker.setLatLng([userLat, userLon]);
+    document.getElementById('loc-status').textContent = 'Location ready';
+  }, () => {
+    document.getElementById('loc-status').textContent = 'Location unavailable';
+  }, { enableHighAccuracy: true });
+}
+
+function flyToUser() { map.flyTo([userLat, userLon], 15); }
+
+function toggleMinimise() {
+  panelMinimised = !panelMinimised;
+  document.getElementById('panel').classList.toggle('minimised', panelMinimised);
+  document.getElementById('minimise-btn').textContent = panelMinimised ? '▴' : '▾';
+}
+
+function setPinMode(mode) {
+  pinMode = mode;
+  document.getElementById('pinGps').classList.toggle('active', mode==='gps');
+  document.getElementById('pinMap').classList.toggle('active', mode==='map');
+  document.getElementById('pinPhoto').classList.toggle('active', mode==='photo');
+  const hint = document.getElementById('tap-hint');
+  const crosshair = document.getElementById('crosshair');
+  const confirmBtn = document.getElementById('confirm-pin-btn');
+  if (mode === 'map') {
+    hint.classList.add('visible'); hint.style.display = 'block';
+    crosshair.classList.add('visible');
+    confirmBtn.style.display = 'block';
+    toggleMinimise();
+  } else {
+    hint.classList.remove('visible'); hint.style.display = 'none';
+    crosshair.classList.remove('visible');
+    confirmBtn.style.display = 'none';
+    mapPinLat = null; mapPinLon = null;
+  }
+}
+
+function confirmMapPin() {
+  const center = map.getCenter();
+  mapPinLat = center.lat;
+  mapPinLon = center.lng;
+  document.getElementById('confirm-pin-btn').style.display = 'none';
+  document.getElementById('crosshair').classList.remove('visible');
+  document.getElementById('tap-hint').style.display = 'none';
+  document.getElementById('loc-status').textContent = `Pin set at ${mapPinLat.toFixed(5)}, ${mapPinLon.toFixed(5)}`;
+  if (panelMinimised) toggleMinimise();
+}
+
+async function handlePhoto(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = async e => {
+    photoData = e.target.result;
+    const preview = document.getElementById('photo-preview');
+    preview.src = photoData; preview.style.display = 'block';
+    document.getElementById('photo-label').style.display = 'none';
+    document.getElementById('photo-area').classList.add('has-photo');
+    try {
+      const exif = await exifr.parse(file, ['GPSLatitude','GPSLongitude']);
+      if (exif && exif.latitude && exif.longitude) {
+        photoLat = exif.latitude; photoLon = exif.longitude;
+        const s = document.getElementById('photo-gps-status');
+        s.style.display = 'block';
+        s.textContent = `GPS found in photo — ${photoLat.toFixed(5)}, ${photoLon.toFixed(5)}`;
+        document.getElementById('pinPhoto').style.display = 'block';
+        setPinMode('photo');
+      } else {
+        photoLat = null; photoLon = null;
+        document.getElementById('photo-gps-status').style.display = 'none';
+        document.getElementById('pinPhoto').style.display = 'none';
+      }
+    } catch(e) { photoLat = null; photoLon = null; }
+  };
+  reader.readAsDataURL(file);
+}
+
+function addType() {
+  const input = document.getElementById('newTypeInput');
+  const val = input.value.trim();
+  if (!val || types.includes(val)) { input.value = ''; return; }
+  types.push(val);
+  if (!typeColorMap[val]) { typeColorMap[val] = TYPE_COLORS[colorIndex % TYPE_COLORS.length]; colorIndex++; }
+  save(); input.value = '';
+  selectedSpotType = val;
+  renderTypeChips(); buildFilters();
+}
+
+function removeType(t) {
+  types = types.filter(x => x !== t);
+  if (selectedSpotType === t) selectedSpotType = null;
+  save(); renderTypeChips(); buildFilters();
+}
+
+function renderTypeChips() {
+  const el = document.getElementById('typeChips');
+  if (!types.length) { el.innerHTML = '<div style="font-size:13px;color:#aaa;margin-top:4px;">No types yet — add one above</div>'; return; }
+  el.innerHTML = types.map(t => `
+    <div class="type-chip ${selectedSpotType===t?'active':''}" onclick="selectType('${t}')">
+      <span style="width:8px;height:8px;border-radius:50%;background:${typeColorMap[t]||'#888'};display:inline-block;"></span>
+      ${t}
+      <span class="del" onclick="event.stopPropagation();removeType('${t}')">✕</span>
+    </div>
+  `).join('');
+}
+
+function selectType(t) { selectedSpotType = t; renderTypeChips(); }
+
+const starsEl = document.getElementById('stars');
+for (let i = 1; i <= 5; i++) {
+  const s = document.createElement('span');
+  s.className = 'star'; s.textContent = '★'; s.dataset.v = i;
+  s.onclick = () => { currentRating = i; document.querySelectorAll('.star').forEach(st => st.classList.toggle('on', parseInt(st.dataset.v) <= i)); };
+  starsEl.appendChild(s);
+}
+
+function toggleVisited() {
+  visitedState = !visitedState;
+  document.getElementById('visitedToggle').classList.toggle('on', visitedState);
+  document.getElementById('visited-label').textContent = visitedState ? 'Visited' : 'Not visited yet';
+}
+
+function addSpot() {
+  const name = document.getElementById('spotName').value.trim();
+  if (!name) { alert('Add a name!'); return; }
+  if (!currentRating) { alert('Pick a star rating!'); return; }
+
+  let lat, lon;
+  if (pinMode === 'map') {
+    if (!mapPinLat) { alert('Set a pin location on the map first!'); return; }
+    lat = mapPinLat; lon = mapPinLon;
+  } else if (pinMode === 'photo' && photoLat) {
+    lat = photoLat; lon = photoLon;
+  } else {
+    lat = userLat; lon = userLon;
+  }
+
+  const spot = { id: Date.now(), name, type: selectedSpotType, rating: currentRating, visited: visitedState, note: document.getElementById('spotNote').value.trim(), photo: photoData, lat, lon };
+  spots.push(spot); save();
+  placeMarker(spot); applyMarkers(); renderList();
+
+  document.getElementById('spotName').value = '';
+  document.getElementById('spotNote').value = '';
+  document.getElementById('photo-preview').style.display = 'none';
+  document.getElementById('photo-preview').src = '';
+  document.getElementById('photo-label').style.display = 'block';
+  document.getElementById('photo-area').classList.remove('has-photo');
+  document.getElementById('photo-gps-status').style.display = 'none';
+  document.getElementById('photoInput').value = '';
+  document.getElementById('pinPhoto').style.display = 'none';
+  photoData = null; photoLat = null; photoLon = null;
+  currentRating = 0;
+  document.querySelectorAll('.star').forEach(s => s.classList.remove('on'));
+  visitedState = false;
+  document.getElementById('visitedToggle').classList.remove('on');
+  document.getElementById('visited-label').textContent = 'Not visited yet';
+  mapPinLat = null; mapPinLon = null;
+  setPinMode('gps');
+  document.getElementById('loc-status').textContent = 'Location ready';
+
+  map.flyTo([lat, lon], 15);
+  switchTab('list');
+}
+
+function deleteSpot(id) {
+  if (!confirm('Delete this spot?')) return;
+  spots = spots.filter(s => s.id !== id);
+  save();
+  const m = markers.find(m => m.id === id);
+  if (m) { map.removeLayer(m.marker); markers = markers.filter(m => m.id !== id); }
+  renderList();
+}
+
+function placeMarker(spot) {
+  const color = (spot.type && typeColorMap[spot.type]) ? typeColorMap[spot.type] : '#888780';
+  const m = L.circleMarker([spot.lat, spot.lon], { radius: 8, fillColor: color, color: '#fff', weight: 2, fillOpacity: spot.visited ? 0.95 : 0.45 }).addTo(map);
+  m.bindPopup(`
+    ${spot.photo ? `<img src="${spot.photo}" style="width:100%;height:100px;object-fit:cover;border-radius:6px;margin-bottom:6px;display:block;">` : ''}
+    <b>${spot.name}</b><br>
+    ${spot.type ? spot.type + ' · ' : ''}${'★'.repeat(spot.rating)}${'☆'.repeat(5-spot.rating)}<br>
+    <small style="color:#888">${spot.visited?'Visited':'Not visited'}</small>
+    ${spot.note ? '<br><small>'+spot.note+'</small>' : ''}
+  `);
+  markers.push({ id: spot.id, marker: m, spot });
+}
+
+function applyMarkers() {
+  markers.forEach(({marker, spot}) => {
+    const ok = (filterType==='all'||spot.type===filterType) && spot.rating>=filterRating &&
+      (filterVisited==='all'||(filterVisited==='visited'&&spot.visited)||(filterVisited==='not'&&!spot.visited));
+    if (ok) map.addLayer(marker); else map.removeLayer(marker);
+  });
+}
+
+function buildFilters() {
+  const tf = document.getElementById('typeFilters');
+  tf.innerHTML = '';
+  ['all',...types].forEach(t => {
+    const b = document.createElement('button');
+    b.className = 'filter-btn'+(t===filterType?' active':'');
+    b.textContent = t==='all'?'All':t;
+    b.onclick = () => { filterType=t; document.querySelectorAll('#typeFilters .filter-btn').forEach(x=>x.classList.remove('active')); b.classList.add('active'); renderList(); applyMarkers(); };
+    tf.appendChild(b);
+  });
+  const rf = document.getElementById('ratingFilters');
+  rf.innerHTML = '';
+  [{label:'Any',val:0},{label:'3+',val:3},{label:'4+',val:4},{label:'5 only',val:5}].forEach(r => {
+    const b = document.createElement('button');
+    b.className = 'filter-btn'+(r.val===filterRating?' active':'');
+    b.textContent = r.label;
+    b.onclick = () => { filterRating=r.val; document.querySelectorAll('#ratingFilters .filter-btn').forEach(x=>x.classList.remove('active')); b.classList.add('active'); renderList(); applyMarkers(); };
+    rf.appendChild(b);
+  });
+  const vf = document.getElementById('visitedFilters');
+  vf.innerHTML = '';
+  [{label:'All',val:'all'},{label:'Visited',val:'visited'},{label:'Not visited',val:'not'}].forEach(v => {
+    const b = document.createElement('button');
+    b.className = 'filter-btn'+(v.val===filterVisited?' active':'');
+    b.textContent = v.label;
+    b.onclick = () => { filterVisited=v.val; document.querySelectorAll('#visitedFilters .filter-btn').forEach(x=>x.classList.remove('active')); b.classList.add('active'); renderList(); applyMarkers(); };
+    vf.appendChild(b);
+  });
+}
+
+function renderList() {
+  const filtered = spots.filter(s =>
+    (filterType==='all'||s.type===filterType) && s.rating>=filterRating &&
+    (filterVisited==='all'||(filterVisited==='visited'&&s.visited)||(filterVisited==='not'&&!s.visited))
+  ).reverse();
+  const el = document.getElementById('spotList');
+  if (!filtered.length) { el.innerHTML = '<div class="empty">No spots match your filters</div>'; return; }
+  el.innerHTML = filtered.map(s => `
+    <div class="spot-card">
+      ${s.photo ? `<img class="spot-card-img" src="${s.photo}">` : ''}
+      <div class="spot-card-body">
+        <div class="spot-card-info" onclick="flyToSpot(${s.id})">
+          <div class="spot-name">${s.name}</div>
+          <div class="spot-meta">
+            ${s.type ? `<span class="spot-dot" style="background:${typeColorMap[s.type]||'#888'}"></span>${s.type}` : ''}
+            <span class="spot-stars">${'★'.repeat(s.rating)}${'☆'.repeat(5-s.rating)}</span>
+            <span class="visited-badge ${s.visited?'visited-yes':'visited-no'}">${s.visited?'Visited':'Not visited'}</span>
+          </div>
+          ${s.note ? `<div style="font-size:12px;color:#666;margin-top:4px;">${s.note}</div>` : ''}
+        </div>
+        <span class="delete-btn" onclick="deleteSpot(${s.id})">✕</span>
+      </div>
+    </div>
+  `).join('');
+}
+
+function flyToSpot(id) {
+  const m = markers.find(m => m.id === id);
+  if (m) { map.flyTo([m.spot.lat, m.spot.lon], 16); m.marker.openPopup(); if (!panelMinimised) toggleMinimise(); }
+}
+
+function switchTab(tab) {
+  document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', (i===0&&tab==='add')||(i===1&&tab==='list')));
+  document.getElementById('tab-add').classList.toggle('active', tab==='add');
+  document.getElementById('tab-list').classList.toggle('active', tab==='list');
+}
+
+spots.forEach(placeMarker);
+renderTypeChips();
+buildFilters();
+renderList();
+</script>
+</body>
+</html>
