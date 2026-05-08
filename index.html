@@ -18,8 +18,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   position: absolute; bottom: 0; left: 0; right: 0;
   background: #fff; border-radius: 20px 20px 0 0;
   box-shadow: 0 -2px 20px rgba(0,0,0,0.12);
-  z-index: 1000;
-  transition: transform 0.3s ease;
+  z-index: 1000; transition: transform 0.3s ease;
 }
 #panel.minimised { transform: translateY(calc(100% - 52px)); }
 #panel-inner { max-height: 88vh; overflow-y: auto; }
@@ -39,8 +38,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .tab { flex: 1; padding: 10px 0; text-align: center; font-size: 14px; font-weight: 500; color: #888; border-bottom: 2px solid transparent; cursor: pointer; }
 .tab.active { color: #1D9E75; border-bottom-color: #1D9E75; }
 
-#tab-add, #tab-list { padding: 16px; display: none; }
-#tab-add.active, #tab-list.active { display: block; }
+#tab-add, #tab-list, #tab-settings { padding: 16px; display: none; }
+#tab-add.active, #tab-list.active, #tab-settings.active { display: block; }
 
 label { display: block; font-size: 13px; color: #666; margin-bottom: 4px; margin-top: 14px; }
 input[type=text], textarea {
@@ -79,9 +78,7 @@ textarea { height: 70px; resize: none; }
 .type-chip .del { font-size: 11px; color: #aaa; cursor: pointer; }
 .type-chip .del:hover { color: #e24b4a; }
 
-.pin-mode-row {
-  display: flex; gap: 8px; margin-top: 4px;
-}
+.pin-mode-row { display: flex; gap: 8px; margin-top: 4px; }
 .pin-btn {
   flex: 1; padding: 10px 8px; border-radius: 10px;
   border: 1.5px solid #eee; background: #fafafa;
@@ -94,7 +91,6 @@ textarea { height: 70px; resize: none; }
   text-align: center; margin-top: 8px; padding: 8px;
   background: #f5f5f5; border-radius: 8px;
 }
-#tap-hint.visible { display: block; }
 
 #crosshair {
   display: none; position: absolute;
@@ -155,6 +151,18 @@ textarea { height: 70px; resize: none; }
   border: none; border-radius: 999px; font-size: 15px; font-weight: 500; cursor: pointer;
   box-shadow: 0 2px 12px rgba(0,0,0,0.15); white-space: nowrap;
 }
+
+.settings-section { margin-bottom: 24px; }
+.settings-title { font-size: 15px; font-weight: 500; margin-bottom: 8px; }
+.settings-desc { font-size: 13px; color: #888; margin-bottom: 12px; line-height: 1.5; }
+.settings-btn {
+  width: 100%; padding: 13px; border-radius: 12px;
+  border: 1px solid #ddd; background: #fafafa;
+  font-size: 15px; cursor: pointer; color: #1a1a1a;
+  margin-bottom: 8px; text-align: left;
+}
+.settings-btn.danger { color: #e24b4a; border-color: #f09595; background: #fcebeb; }
+.settings-stat { font-size: 13px; color: #888; margin-top: 4px; }
 </style>
 </head>
 <body>
@@ -173,6 +181,7 @@ textarea { height: 70px; resize: none; }
     <div id="tabs">
       <div class="tab active" onclick="switchTab('add')">Add spot</div>
       <div class="tab" onclick="switchTab('list')">My spots</div>
+      <div class="tab" onclick="switchTab('settings')">Settings</div>
     </div>
 
     <div id="tab-add" class="active">
@@ -181,7 +190,7 @@ textarea { height: 70px; resize: none; }
         <img id="photo-preview">
         <div id="photo-label">Tap to add photo</div>
       </div>
-      <div id="photo-gps-status">GPS found in photo</div>
+      <div id="photo-gps-status"></div>
       <input type="file" id="photoInput" accept="image/*" style="display:none" onchange="handlePhoto(this)">
 
       <label>Name</label>
@@ -199,11 +208,11 @@ textarea { height: 70px; resize: none; }
 
       <label>Pin location</label>
       <div class="pin-mode-row">
-        <div class="pin-btn active" id="pinGps" onclick="setPinMode('gps')">Use my location</div>
-        <div class="pin-btn" id="pinMap" onclick="setPinMode('map')">Tap on map</div>
+        <div class="pin-btn active" id="pinGps" onclick="setPinMode('gps')">My location</div>
+        <div class="pin-btn" id="pinMap" onclick="setPinMode('map')">Tap map</div>
         <div class="pin-btn" id="pinPhoto" onclick="setPinMode('photo')" style="display:none">From photo</div>
       </div>
-      <div id="tap-hint" class="visible" style="display:none;">Minimise this panel, then drag the map to where you want the pin. Hit "Set pin here" when ready.</div>
+      <div id="tap-hint">Minimise this panel, drag the map to your spot, then hit "Set pin here".</div>
 
       <label>Visited</label>
       <div class="visited-toggle" onclick="toggleVisited()">
@@ -227,6 +236,22 @@ textarea { height: 70px; resize: none; }
       <div class="filters" id="visitedFilters"></div>
       <div id="spotList" style="margin-top:12px;"></div>
     </div>
+
+    <div id="tab-settings">
+      <div class="settings-section">
+        <div class="settings-title">Backup & restore</div>
+        <div class="settings-desc">Export saves all your spots and types to a JSON file. Import loads them back — useful if you switch phones or clear your browser data.</div>
+        <button class="settings-btn" onclick="exportData()">Export backup...</button>
+        <button class="settings-btn" onclick="document.getElementById('importInput').click()">Import backup...</button>
+        <input type="file" id="importInput" accept=".json" style="display:none" onchange="importData(this)">
+        <div class="settings-stat" id="settings-stat"></div>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-title">Danger zone</div>
+        <button class="settings-btn danger" onclick="clearAllData()">Delete all spots</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -249,6 +274,11 @@ function save() {
   localStorage.setItem('spots', JSON.stringify(spots));
   localStorage.setItem('types', JSON.stringify(types));
   localStorage.setItem('typeColorMap', JSON.stringify(typeColorMap));
+  updateSettingsStat();
+}
+
+function updateSettingsStat() {
+  document.getElementById('settings-stat').textContent = `${spots.length} spot${spots.length!==1?'s':''} saved`;
 }
 
 map = L.map('map', { zoomControl: false }).setView([userLat, userLon], 13);
@@ -284,12 +314,12 @@ function setPinMode(mode) {
   const crosshair = document.getElementById('crosshair');
   const confirmBtn = document.getElementById('confirm-pin-btn');
   if (mode === 'map') {
-    hint.classList.add('visible'); hint.style.display = 'block';
+    hint.style.display = 'block';
     crosshair.classList.add('visible');
     confirmBtn.style.display = 'block';
-    toggleMinimise();
+    if (!panelMinimised) toggleMinimise();
   } else {
-    hint.classList.remove('visible'); hint.style.display = 'none';
+    hint.style.display = 'none';
     crosshair.classList.remove('visible');
     confirmBtn.style.display = 'none';
     mapPinLat = null; mapPinLon = null;
@@ -298,8 +328,7 @@ function setPinMode(mode) {
 
 function confirmMapPin() {
   const center = map.getCenter();
-  mapPinLat = center.lat;
-  mapPinLon = center.lng;
+  mapPinLat = center.lat; mapPinLon = center.lng;
   document.getElementById('confirm-pin-btn').style.display = 'none';
   document.getElementById('crosshair').classList.remove('visible');
   document.getElementById('tap-hint').style.display = 'none';
@@ -323,7 +352,8 @@ async function handlePhoto(input) {
         photoLat = exif.latitude; photoLon = exif.longitude;
         const s = document.getElementById('photo-gps-status');
         s.style.display = 'block';
-        s.textContent = `GPS found in photo — ${photoLat.toFixed(5)}, ${photoLon.toFixed(5)}`;
+        s.textContent = `GPS found — ${photoLat.toFixed(5)}, ${photoLon.toFixed(5)}`;
+        s.style.color = '#1D9E75'; s.style.fontSize = '12px'; s.style.marginTop = '6px';
         document.getElementById('pinPhoto').style.display = 'block';
         setPinMode('photo');
       } else {
@@ -385,7 +415,6 @@ function addSpot() {
   const name = document.getElementById('spotName').value.trim();
   if (!name) { alert('Add a name!'); return; }
   if (!currentRating) { alert('Pick a star rating!'); return; }
-
   let lat, lon;
   if (pinMode === 'map') {
     if (!mapPinLat) { alert('Set a pin location on the map first!'); return; }
@@ -395,11 +424,15 @@ function addSpot() {
   } else {
     lat = userLat; lon = userLon;
   }
-
   const spot = { id: Date.now(), name, type: selectedSpotType, rating: currentRating, visited: visitedState, note: document.getElementById('spotNote').value.trim(), photo: photoData, lat, lon };
   spots.push(spot); save();
   placeMarker(spot); applyMarkers(); renderList();
+  resetAddForm();
+  map.flyTo([lat, lon], 15);
+  switchTab('list');
+}
 
+function resetAddForm() {
   document.getElementById('spotName').value = '';
   document.getElementById('spotNote').value = '';
   document.getElementById('photo-preview').style.display = 'none';
@@ -418,9 +451,6 @@ function addSpot() {
   mapPinLat = null; mapPinLon = null;
   setPinMode('gps');
   document.getElementById('loc-status').textContent = 'Location ready';
-
-  map.flyTo([lat, lon], 15);
-  switchTab('list');
 }
 
 function deleteSpot(id) {
@@ -432,13 +462,60 @@ function deleteSpot(id) {
   renderList();
 }
 
+function exportData() {
+  const data = { spots, types, typeColorMap, exported: new Date().toISOString() };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `spot-logger-backup-${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function importData(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (!data.spots || !Array.isArray(data.spots)) { alert('Invalid backup file.'); return; }
+      if (!confirm(`Import ${data.spots.length} spots? This will replace your current data.`)) return;
+      spots = data.spots;
+      types = data.types || [];
+      typeColorMap = data.typeColorMap || {};
+      save();
+      markers.forEach(m => map.removeLayer(m.marker));
+      markers = [];
+      spots.forEach(placeMarker);
+      applyMarkers();
+      renderTypeChips();
+      buildFilters();
+      renderList();
+      alert('Import successful!');
+    } catch(e) { alert('Could not read backup file.'); }
+  };
+  reader.readAsText(file);
+  input.value = '';
+}
+
+function clearAllData() {
+  if (!confirm(`Delete all ${spots.length} spots? This cannot be undone.`)) return;
+  spots = [];
+  save();
+  markers.forEach(m => map.removeLayer(m.marker));
+  markers = [];
+  renderList();
+}
+
 function placeMarker(spot) {
   const color = (spot.type && typeColorMap[spot.type]) ? typeColorMap[spot.type] : '#888780';
   const m = L.circleMarker([spot.lat, spot.lon], { radius: 8, fillColor: color, color: '#fff', weight: 2, fillOpacity: spot.visited ? 0.95 : 0.45 }).addTo(map);
   m.bindPopup(`
     ${spot.photo ? `<img src="${spot.photo}" style="width:100%;height:100px;object-fit:cover;border-radius:6px;margin-bottom:6px;display:block;">` : ''}
     <b>${spot.name}</b><br>
-    ${spot.type ? spot.type + ' · ' : ''}${'★'.repeat(spot.rating)}${'☆'.repeat(5-spot.rating)}<br>
+    ${spot.type ? spot.type+' · ' : ''}${'★'.repeat(spot.rating)}${'☆'.repeat(5-spot.rating)}<br>
     <small style="color:#888">${spot.visited?'Visited':'Not visited'}</small>
     ${spot.note ? '<br><small>'+spot.note+'</small>' : ''}
   `);
@@ -515,15 +592,17 @@ function flyToSpot(id) {
 }
 
 function switchTab(tab) {
-  document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', (i===0&&tab==='add')||(i===1&&tab==='list')));
+  document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', (i===0&&tab==='add')||(i===1&&tab==='list')||(i===2&&tab==='settings')));
   document.getElementById('tab-add').classList.toggle('active', tab==='add');
   document.getElementById('tab-list').classList.toggle('active', tab==='list');
+  document.getElementById('tab-settings').classList.toggle('active', tab==='settings');
 }
 
 spots.forEach(placeMarker);
 renderTypeChips();
 buildFilters();
 renderList();
+updateSettingsStat();
 </script>
 </body>
 </html>
