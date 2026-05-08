@@ -172,7 +172,7 @@ textarea { height: 70px; resize: none; }
         </div>
         <button id="photo-clear-btn" onclick="clearPhoto()">✕</button>
       </div>
-      <input type="file" id="photoInput"  capture="environment" style="display:none" onchange="handlePhoto(this)">
+      <input type="file" id="photoInput" accept="image/jpeg,image/png,image/heic,image/heif,image/webp" style="display:none" onchange="handlePhoto(this)">
 
       <label>Name</label>
       <input type="text" id="spotName" placeholder="e.g. Sunrise Rock">
