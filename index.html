@@ -9,6 +9,7 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/exifr@7.1.3/dist/lite.umd.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f5; color: #1a1a1a; overflow: hidden; }
@@ -83,8 +84,7 @@ textarea { height: 70px; resize: none; }
 #crosshair {
   display: none; position: absolute; top: 50%; left: 50%;
   transform: translate(-50%, -50%); z-index: 999;
-  pointer-events: none; font-size: 36px; color: #1D9E75;
-  font-weight: 200; line-height: 1;
+  pointer-events: none; font-size: 36px; color: #1D9E75; font-weight: 200;
 }
 #crosshair.visible { display: block; }
 .visited-toggle {
@@ -101,6 +101,7 @@ textarea { height: 70px; resize: none; }
   border: none; border-radius: 12px; font-size: 16px; font-weight: 500;
   cursor: pointer; margin-top: 16px;
 }
+#add-btn:disabled { background: #aaa; }
 #loc-status { font-size: 12px; color: #888; margin-top: 8px; text-align: center; }
 .filter-label { font-size: 12px; color: #888; margin-bottom: 6px; margin-top: 12px; }
 .filter-label:first-child { margin-top: 0; }
@@ -119,8 +120,8 @@ textarea { height: 70px; resize: none; }
 .visited-yes { background: #e1f5ee; color: #0F6E56; }
 .visited-no { background: #f1efe8; color: #5f5e5a; }
 .delete-btn { font-size: 18px; color: #ddd; cursor: pointer; padding: 2px 4px; flex-shrink: 0; }
-.delete-btn:hover { color: #e24b4a; }
 .empty { text-align: center; color: #aaa; font-size: 14px; padding: 30px 0; }
+#sync-status { font-size: 12px; color: #888; text-align: center; padding: 6px 0; }
 #locate-btn {
   position: absolute; top: 16px; right: 16px; z-index: 999;
   width: 40px; height: 40px; border-radius: 50%;
@@ -157,6 +158,7 @@ textarea { height: 70px; resize: none; }
     <button id="minimise-btn" onclick="event.stopPropagation();toggleMinimise()">▾</button>
   </div>
   <div id="panel-inner">
+    <div id="sync-status">Connecting...</div>
     <div id="tabs">
       <div class="tab active" onclick="switchTab('add')">Add spot</div>
       <div class="tab" onclick="switchTab('list')">My spots</div>
@@ -221,12 +223,9 @@ textarea { height: 70px; resize: none; }
 
     <div id="tab-settings">
       <div class="settings-section">
-        <div class="settings-title">Backup & restore</div>
-        <div class="settings-desc">Export saves all your spots and types to a JSON file. Import loads them back.</div>
-        <button class="settings-btn" onclick="exportData()">Export backup...</button>
-        <button class="settings-btn" onclick="document.getElementById('importInput').click()">Import backup...</button>
-        <input type="file" id="importInput" accept=".json" style="display:none" onchange="importData(this)">
-        <div class="settings-stat" id="settings-stat"></div>
+        <div class="settings-title">Storage</div>
+        <div class="settings-desc">Spots are saved to Supabase — no limits, works across devices.</div>
+        <div class="settings-stat" id="settings-stat">Loading...</div>
       </div>
       <div class="settings-section">
         <div class="settings-title">Danger zone</div>
@@ -237,46 +236,31 @@ textarea { height: 70px; resize: none; }
 </div>
 
 <script>
-const TYPE_COLORS = ['#378ADD','#1D9E75','#D85A30','#534AB7','#BA7517','#D4537E','#639922','#888780','#E24B4A','#0F6E56'];
-let colorIdx = 0;
-let map, userLat = -26.65, userLon = 153.09, userMarker;
-let spots = [], types = [], typeColorMap = {};
-let markers = [];
-let currentRating = 0, selectedType = null, visitedState = false;
-let photoData = null, photoLat = null, photoLon = null;
-let pinMode = 'gps', mapPinLat = null, mapPinLon = null;
-let filterType = 'all', filterRating = 0, filterVisited = 'all';
-let panelMinimised = false;
+var SUPABASE_URL = 'https://zxmnivcyfwajchoiiwdh.supabase.co';
+var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp4bW5pdmN5ZndhamNob2lpd2RoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgyMTQzMDQsImV4cCI6MjA5Mzc5MDMwNH0.gg2AHcAg_Y7Ooh0Kij_Q-8fUC0LUO0xvmCBAoJeyscI';
+var sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-function loadStorage() {
-  try { spots = JSON.parse(localStorage.getItem('spots') || '[]'); } catch(e) { spots = []; }
-  try { types = JSON.parse(localStorage.getItem('types') || '[]'); } catch(e) { types = []; }
-  try { typeColorMap = JSON.parse(localStorage.getItem('typeColorMap') || '{}'); } catch(e) { typeColorMap = {}; }
-}
+var TYPE_COLORS = ['#378ADD','#1D9E75','#D85A30','#534AB7','#BA7517','#D4537E','#639922','#888780','#E24B4A','#0F6E56'];
+var colorIdx = 0;
 
-function save() {
-  localStorage.setItem('spots', JSON.stringify(spots));
-  localStorage.setItem('types', JSON.stringify(types));
-  localStorage.setItem('typeColorMap', JSON.stringify(typeColorMap));
-  document.getElementById('settings-stat').textContent = spots.length + ' spot' + (spots.length !== 1 ? 's' : '') + ' saved';
-}
-
-loadStorage();
+var map, userLat = -26.65, userLon = 153.09, userMarker;
+var spots = [], types = [], typeColorMap = {};
+var markers = [];
+var currentRating = 0, selectedType = null, visitedState = false;
+var photoFile = null, photoData = null, photoLat = null, photoLon = null;
+var pinMode = 'gps', mapPinLat = null, mapPinLon = null;
+var filterType = 'all', filterRating = 0, filterVisited = 'all';
+var panelMinimised = false;
 
 map = L.map('map', { zoomControl: false }).setView([userLat, userLon], 13);
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  attribution: '© OpenStreetMap', maxZoom: 19
-}).addTo(map);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap', maxZoom: 19 }).addTo(map);
 L.control.zoom({ position: 'topright' }).addTo(map);
 
-userMarker = L.circleMarker([userLat, userLon], {
-  radius: 8, fillColor: '#378ADD', color: '#fff', weight: 2, fillOpacity: 1
-}).addTo(map).bindPopup('You are here');
+userMarker = L.circleMarker([userLat, userLon], { radius: 8, fillColor: '#378ADD', color: '#fff', weight: 2, fillOpacity: 1 }).addTo(map).bindPopup('You are here');
 
 if (navigator.geolocation) {
   navigator.geolocation.watchPosition(function(pos) {
-    userLat = pos.coords.latitude;
-    userLon = pos.coords.longitude;
+    userLat = pos.coords.latitude; userLon = pos.coords.longitude;
     userMarker.setLatLng([userLat, userLon]);
     document.getElementById('loc-status').textContent = 'Location ready';
     renderList();
@@ -294,6 +278,7 @@ function toggleMinimise() {
 }
 
 function setPinMode(mode) {
+  if (mode === 'photo' && photoLat === null) return;
   pinMode = mode;
   document.getElementById('pin-gps-btn').classList.toggle('active', mode === 'gps');
   document.getElementById('pin-map-btn').classList.toggle('active', mode === 'map');
@@ -303,23 +288,16 @@ function setPinMode(mode) {
   var crosshair = document.getElementById('crosshair');
   var confirmBtn = document.getElementById('confirm-pin-btn');
   if (mode === 'map') {
-    hint.style.display = 'block';
-    crosshair.classList.add('visible');
-    confirmBtn.style.display = 'block';
-    info.style.display = 'none';
+    hint.style.display = 'block'; crosshair.classList.add('visible');
+    confirmBtn.style.display = 'block'; info.style.display = 'none';
     if (!panelMinimised) toggleMinimise();
   } else {
-    hint.style.display = 'none';
-    crosshair.classList.remove('visible');
+    hint.style.display = 'none'; crosshair.classList.remove('visible');
     confirmBtn.style.display = 'none';
     if (mode === 'photo' && photoLat !== null) {
       info.style.display = 'block';
-      info.style.color = '#1D9E75';
       info.textContent = 'Using photo GPS: ' + photoLat.toFixed(5) + ', ' + photoLon.toFixed(5);
-    } else if (mode === 'gps') {
-      info.style.display = 'none';
-      mapPinLat = null; mapPinLon = null;
-    }
+    } else { info.style.display = 'none'; mapPinLat = null; mapPinLon = null; }
   }
 }
 
@@ -331,98 +309,112 @@ function confirmMapPin() {
   document.getElementById('tap-hint').style.display = 'none';
   var info = document.getElementById('pin-info');
   info.style.display = 'block';
-  info.style.color = '#1D9E75';
   info.textContent = 'Pin set: ' + mapPinLat.toFixed(5) + ', ' + mapPinLon.toFixed(5);
   if (panelMinimised) toggleMinimise();
+}
+
+function compressImage(dataUrl, callback) {
+  var img = new Image();
+  img.onload = function() {
+    var canvas = document.createElement('canvas');
+    var MAX = 1200;
+    var w = img.width, h = img.height;
+    if (w > h) { if (w > MAX) { h = Math.round(h * MAX / w); w = MAX; } }
+    else { if (h > MAX) { w = Math.round(w * MAX / h); h = MAX; } }
+    canvas.width = w; canvas.height = h;
+    canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+    canvas.toBlob(function(blob) { callback(blob); }, 'image/jpeg', 0.8);
+  };
+  img.src = dataUrl;
 }
 
 async function handlePhoto(input) {
   var file = input.files[0];
   if (!file) return;
-  var reader = new FileReader();
-  reader.onload = async function(e) {
-    photoData = e.target.result;
-    var preview = document.getElementById('photo-preview');
-    preview.src = photoData;
-    preview.style.display = 'block';
-    document.getElementById('photo-label').style.display = 'none';
-    document.getElementById('photo-clear-btn').style.display = 'block';
-    try {
-      var exif = await exifr.parse(file, ['GPSLatitude', 'GPSLongitude']);
-      if (exif && typeof exif.latitude === 'number' && typeof exif.longitude === 'number') {
-        photoLat = exif.latitude;
-        photoLon = exif.longitude;
-        document.getElementById('pin-photo-btn').style.display = 'block';
-        setPinMode('photo');
-      } else {
-        photoLat = null; photoLon = null;
-        document.getElementById('pin-photo-btn').style.display = 'none';
-      }
-    } catch(err) {
+  try {
+    var exif = await exifr.parse(file, ['GPSLatitude', 'GPSLongitude']);
+    if (exif && typeof exif.latitude === 'number' && typeof exif.longitude === 'number') {
+      photoLat = exif.latitude; photoLon = exif.longitude;
+      document.getElementById('pin-photo-btn').style.display = 'block';
+    } else {
       photoLat = null; photoLon = null;
       document.getElementById('pin-photo-btn').style.display = 'none';
     }
+  } catch(e) { photoLat = null; photoLon = null; document.getElementById('pin-photo-btn').style.display = 'none'; }
+
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    photoData = e.target.result;
+    document.getElementById('photo-preview').src = photoData;
+    document.getElementById('photo-preview').style.display = 'block';
+    document.getElementById('photo-label').style.display = 'none';
+    document.getElementById('photo-clear-btn').style.display = 'block';
+    compressImage(photoData, function(blob) { photoFile = blob; });
+    if (photoLat !== null) setPinMode('photo');
   };
   reader.readAsDataURL(file);
 }
 
 function clearPhoto() {
-  photoData = null; photoLat = null; photoLon = null;
+  photoData = null; photoFile = null; photoLat = null; photoLon = null;
   document.getElementById('photo-preview').style.display = 'none';
   document.getElementById('photo-preview').src = '';
   document.getElementById('photo-label').style.display = 'block';
   document.getElementById('photo-clear-btn').style.display = 'none';
   document.getElementById('photoInput').value = '';
   document.getElementById('pin-photo-btn').style.display = 'none';
+  document.getElementById('pin-info').style.display = 'none';
   if (pinMode === 'photo') setPinMode('gps');
 }
 
-function addType() {
+async function addType() {
   var input = document.getElementById('newTypeInput');
   var val = input.value.trim();
-  if (!val || types.indexOf(val) > -1) { input.value = ''; return; }
-  types.push(val);
-  if (!typeColorMap[val]) { typeColorMap[val] = TYPE_COLORS[colorIdx % TYPE_COLORS.length]; colorIdx++; }
-  save(); input.value = '';
-  selectedType = val;
+  if (!val) return;
+  if (types.find(function(t) { return t.name === val; })) { input.value = ''; return; }
+  var color = TYPE_COLORS[colorIdx % TYPE_COLORS.length]; colorIdx++;
+  var res = await sb.from('types').insert({ name: val, color: color }).select().single();
+  if (res.error) { alert('Error saving type'); return; }
+  types.push(res.data);
+  input.value = ''; selectedType = res.data.name;
   renderTypeChips(); buildFilters();
 }
 
-function removeType(t) {
-  types = types.filter(function(x) { return x !== t; });
-  if (selectedType === t) selectedType = null;
-  save(); renderTypeChips(); buildFilters();
+async function removeType(name) {
+  await sb.from('types').delete().eq('name', name);
+  types = types.filter(function(t) { return t.name !== name; });
+  if (selectedType === name) selectedType = null;
+  renderTypeChips(); buildFilters();
+}
+
+function getTypeColor(name) {
+  var t = types.find(function(t) { return t.name === name; });
+  return t ? t.color : '#888780';
 }
 
 function renderTypeChips() {
   var el = document.getElementById('typeChips');
-  if (!types.length) {
-    el.innerHTML = '<div style="font-size:13px;color:#aaa;margin-top:4px;">No types yet — add one above</div>';
-    return;
-  }
+  if (!types.length) { el.innerHTML = '<div style="font-size:13px;color:#aaa;margin-top:4px;">No types yet — add one above</div>'; return; }
   el.innerHTML = types.map(function(t) {
-    return '<div class="type-chip' + (selectedType === t ? ' active' : '') + '" onclick="selectType(\'' + t + '\')">'
-      + '<span style="width:8px;height:8px;border-radius:50%;background:' + (typeColorMap[t] || '#888') + ';display:inline-block;"></span>'
-      + t
-      + '<span class="del" onclick="event.stopPropagation();removeType(\'' + t + '\')">✕</span>'
+    return '<div class="type-chip' + (selectedType === t.name ? ' active' : '') + '" onclick="selectType(\'' + t.name + '\')">'
+      + '<span style="width:8px;height:8px;border-radius:50%;background:' + t.color + ';display:inline-block;"></span>'
+      + t.name
+      + '<span class="del" onclick="event.stopPropagation();removeType(\'' + t.name + '\')">✕</span>'
       + '</div>';
   }).join('');
 }
 
-function selectType(t) { selectedType = t; renderTypeChips(); }
+function selectType(name) { selectedType = name; renderTypeChips(); }
 
 var starsEl = document.getElementById('stars');
 for (var i = 1; i <= 5; i++) {
   (function(val) {
     var s = document.createElement('span');
-    s.className = 'star'; s.textContent = '★';
+    s.className = 'star'; s.textContent = '★'; s.dataset.v = val;
     s.onclick = function() {
       currentRating = val;
-      document.querySelectorAll('.star').forEach(function(st) {
-        st.classList.toggle('on', parseInt(st.dataset.v) <= val);
-      });
+      document.querySelectorAll('.star').forEach(function(st) { st.classList.toggle('on', parseInt(st.dataset.v) <= val); });
     };
-    s.dataset.v = val;
     starsEl.appendChild(s);
   })(i);
 }
@@ -433,7 +425,7 @@ function toggleVisited() {
   document.getElementById('visited-label').textContent = visitedState ? 'Visited' : 'Not visited yet';
 }
 
-function addSpot() {
+async function addSpot() {
   var name = document.getElementById('spotName').value.trim();
   if (!name) { alert('Add a name!'); return; }
   if (!currentRating) { alert('Pick a star rating!'); return; }
@@ -443,20 +435,36 @@ function addSpot() {
     lat = mapPinLat; lon = mapPinLon;
   } else if (pinMode === 'photo' && photoLat !== null) {
     lat = photoLat; lon = photoLon;
-  } else {
-    lat = userLat; lon = userLon;
+  } else { lat = userLat; lon = userLon; }
+
+  var btn = document.getElementById('add-btn');
+  btn.disabled = true; btn.textContent = 'Saving...';
+
+  var photoUrl = null;
+  if (photoFile) {
+    var fileName = 'photo_' + Date.now() + '.jpg';
+    var upload = await sb.storage.from('photos').upload(fileName, photoFile, { contentType: 'image/jpeg' });
+    if (!upload.error) {
+      var pub = sb.storage.from('photos').getPublicUrl(fileName);
+      photoUrl = pub.data.publicUrl;
+    }
   }
-  if (isNaN(lat) || isNaN(lon)) { alert('Could not get a valid location. Try again.'); return; }
-  var spot = {
-    id: Date.now(), name: name, type: selectedType, rating: currentRating,
+
+  var res = await sb.from('spots').insert({
+    name: name, type: selectedType, rating: currentRating,
     visited: visitedState, note: document.getElementById('spotNote').value.trim(),
-    photo: photoData, lat: lat, lon: lon
-  };
-  spots.push(spot);
-  save();
-  addMarkerForSpot(spot);
+    photo_url: photoUrl, lat: lat, lon: lon
+  }).select().single();
+
+  btn.disabled = false; btn.textContent = 'Drop pin';
+
+  if (res.error) { alert('Error saving spot: ' + res.error.message); return; }
+
+  spots.push(res.data);
+  addMarkerForSpot(res.data);
   applyMarkers();
   renderList();
+  updateStatCount();
   var flyLat = lat, flyLon = lon;
   resetAddForm();
   switchTab('list');
@@ -482,23 +490,49 @@ function resetAddForm() {
   document.getElementById('pin-map-btn').classList.remove('active');
   document.getElementById('pin-photo-btn').classList.remove('active');
   document.getElementById('pin-photo-btn').style.display = 'none';
+  document.getElementById('loc-status').textContent = 'Location ready';
+}
+
+async function deleteSpot(id) {
+  if (!confirm('Delete this spot?')) return;
+  var spot = spots.find(function(s) { return s.id === id; });
+  if (spot && spot.photo_url) {
+    var fileName = spot.photo_url.split('/').pop();
+    await sb.storage.from('photos').remove([fileName]);
+  }
+  await sb.from('spots').delete().eq('id', id);
+  spots = spots.filter(function(s) { return s.id !== id; });
+  var idx = markers.findIndex(function(m) { return m.id === id; });
+  if (idx > -1) { map.removeLayer(markers[idx].marker); markers.splice(idx, 1); }
+  renderList(); updateStatCount();
+}
+
+async function clearAllData() {
+  if (!confirm('Delete ALL spots? This cannot be undone.')) return;
+  var allPhotoNames = spots.filter(function(s) { return s.photo_url; }).map(function(s) { return s.photo_url.split('/').pop(); });
+  if (allPhotoNames.length) await sb.storage.from('photos').remove(allPhotoNames);
+  await sb.from('spots').delete().neq('id', 0);
+  spots = [];
+  markers.forEach(function(m) { map.removeLayer(m.marker); });
+  markers = [];
+  renderList(); updateStatCount();
 }
 
 function addMarkerForSpot(spot) {
-  if (isNaN(spot.lat) || isNaN(spot.lon)) return;
-  var color = (spot.type && typeColorMap[spot.type]) ? typeColorMap[spot.type] : '#888780';
+  if (!spot.lat || !spot.lon || isNaN(spot.lat) || isNaN(spot.lon)) return;
+  var color = getTypeColor(spot.type);
   var m = L.circleMarker([spot.lat, spot.lon], {
     radius: 9, fillColor: color, color: '#fff', weight: 2,
     fillOpacity: spot.visited ? 0.95 : 0.55
   });
   m.addTo(map);
   var stars = '★'.repeat(spot.rating) + '☆'.repeat(5 - spot.rating);
-  var popup = (spot.photo ? '<img src="' + spot.photo + '" style="width:100%;height:100px;object-fit:cover;border-radius:6px;margin-bottom:6px;display:block;">' : '')
+  var popup = (spot.photo_url ? '<img src="' + spot.photo_url + '" style="width:100%;height:120px;object-fit:cover;border-radius:6px;margin-bottom:6px;display:block;">' : '')
     + '<b>' + spot.name + '</b><br>'
     + (spot.type ? spot.type + ' · ' : '') + stars + '<br>'
     + '<small style="color:#888">' + (spot.visited ? 'Visited' : 'Not visited') + '</small>'
     + (spot.note ? '<br><small>' + spot.note + '</small>' : '');
-  m.bindPopup(popup, { maxWidth: 220 });
+  m.bindPopup(popup, { maxWidth: 240 });
   markers.push({ id: spot.id, marker: m, spot: spot });
 }
 
@@ -506,77 +540,28 @@ function applyMarkers() {
   markers.forEach(function(item) {
     var show = (filterType === 'all' || item.spot.type === filterType)
       && item.spot.rating >= filterRating
-      && (filterVisited === 'all'
-        || (filterVisited === 'visited' && item.spot.visited)
-        || (filterVisited === 'not' && !item.spot.visited));
+      && (filterVisited === 'all' || (filterVisited === 'visited' && item.spot.visited) || (filterVisited === 'not' && !item.spot.visited));
     if (show) { if (!map.hasLayer(item.marker)) map.addLayer(item.marker); }
     else { if (map.hasLayer(item.marker)) map.removeLayer(item.marker); }
   });
 }
 
-function deleteSpot(id) {
-  if (!confirm('Delete this spot?')) return;
-  spots = spots.filter(function(s) { return s.id !== id; });
-  save();
-  var idx = markers.findIndex(function(m) { return m.id === id; });
-  if (idx > -1) { map.removeLayer(markers[idx].marker); markers.splice(idx, 1); }
-  renderList();
+function haversineKm(lat1, lon1, lat2, lon2) {
+  var R = 6371, dLat = (lat2-lat1)*Math.PI/180, dLon = (lon2-lon1)*Math.PI/180;
+  var a = Math.sin(dLat/2)*Math.sin(dLat/2) + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)*Math.sin(dLon/2);
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 }
 
-function exportData() {
-  var data = { spots: spots, types: types, typeColorMap: typeColorMap, exported: new Date().toISOString() };
-  var blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-  var url = URL.createObjectURL(blob);
-  var a = document.createElement('a');
-  a.href = url;
-  a.download = 'spot-logger-backup-' + new Date().toISOString().slice(0, 10) + '.json';
-  a.click();
-  URL.revokeObjectURL(url);
-}
-
-function importData(input) {
-  var file = input.files[0];
-  if (!file) return;
-  var reader = new FileReader();
-  reader.onload = function(e) {
-    try {
-      var data = JSON.parse(e.target.result);
-      if (!data.spots || !Array.isArray(data.spots)) { alert('Invalid backup file.'); return; }
-      if (!confirm('Import ' + data.spots.length + ' spots? This will replace your current data.')) return;
-      spots = data.spots; types = data.types || []; typeColorMap = data.typeColorMap || {};
-      save();
-      markers.forEach(function(m) { map.removeLayer(m.marker); });
-      markers = [];
-      spots.forEach(addMarkerForSpot);
-      applyMarkers();
-      renderTypeChips(); buildFilters(); renderList();
-      alert('Import successful!');
-    } catch(err) { alert('Could not read backup file.'); }
-  };
-  reader.readAsText(file);
-  input.value = '';
-}
-
-function clearAllData() {
-  if (!confirm('Delete all ' + spots.length + ' spots? This cannot be undone.')) return;
-  spots = []; save();
-  markers.forEach(function(m) { map.removeLayer(m.marker); });
-  markers = [];
-  renderList();
-}
+function formatDist(km) { return km < 1 ? Math.round(km*1000)+'m' : km.toFixed(1)+'km'; }
 
 function buildFilters() {
   var tf = document.getElementById('typeFilters');
   tf.innerHTML = '';
-  ['all'].concat(types).forEach(function(t) {
+  ['all'].concat(types.map(function(t) { return t.name; })).forEach(function(t) {
     var b = document.createElement('button');
     b.className = 'filter-btn' + (t === filterType ? ' active' : '');
     b.textContent = t === 'all' ? 'All' : t;
-    b.onclick = function() {
-      filterType = t;
-      document.querySelectorAll('#typeFilters .filter-btn').forEach(function(x) { x.classList.remove('active'); });
-      b.classList.add('active'); renderList(); applyMarkers();
-    };
+    b.onclick = function() { filterType = t; document.querySelectorAll('#typeFilters .filter-btn').forEach(function(x){x.classList.remove('active');}); b.classList.add('active'); renderList(); applyMarkers(); };
     tf.appendChild(b);
   });
   var rf = document.getElementById('ratingFilters');
@@ -585,11 +570,7 @@ function buildFilters() {
     var b = document.createElement('button');
     b.className = 'filter-btn' + (r.val === filterRating ? ' active' : '');
     b.textContent = r.label;
-    b.onclick = function() {
-      filterRating = r.val;
-      document.querySelectorAll('#ratingFilters .filter-btn').forEach(function(x) { x.classList.remove('active'); });
-      b.classList.add('active'); renderList(); applyMarkers();
-    };
+    b.onclick = function() { filterRating = r.val; document.querySelectorAll('#ratingFilters .filter-btn').forEach(function(x){x.classList.remove('active');}); b.classList.add('active'); renderList(); applyMarkers(); };
     rf.appendChild(b);
   });
   var vf = document.getElementById('visitedFilters');
@@ -598,28 +579,9 @@ function buildFilters() {
     var b = document.createElement('button');
     b.className = 'filter-btn' + (v.val === filterVisited ? ' active' : '');
     b.textContent = v.label;
-    b.onclick = function() {
-      filterVisited = v.val;
-      document.querySelectorAll('#visitedFilters .filter-btn').forEach(function(x) { x.classList.remove('active'); });
-      b.classList.add('active'); renderList(); applyMarkers();
-    };
+    b.onclick = function() { filterVisited = v.val; document.querySelectorAll('#visitedFilters .filter-btn').forEach(function(x){x.classList.remove('active');}); b.classList.add('active'); renderList(); applyMarkers(); };
     vf.appendChild(b);
   });
-}
-
-function haversineKm(lat1, lon1, lat2, lon2) {
-  var R = 6371;
-  var dLat = (lat2 - lat1) * Math.PI / 180;
-  var dLon = (lon2 - lon1) * Math.PI / 180;
-  var a = Math.sin(dLat/2) * Math.sin(dLat/2)
-    + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180)
-    * Math.sin(dLon/2) * Math.sin(dLon/2);
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-}
-
-function formatDist(km) {
-  if (km < 1) return Math.round(km * 1000) + ' m';
-  return km.toFixed(1) + ' km';
 }
 
 function renderList() {
@@ -628,17 +590,15 @@ function renderList() {
       && s.rating >= filterRating
       && (filterVisited === 'all' || (filterVisited === 'visited' && s.visited) || (filterVisited === 'not' && !s.visited));
   });
-  filtered.forEach(function(s) {
-    s._dist = haversineKm(userLat, userLon, s.lat, s.lon);
-  });
-  filtered.sort(function(a, b) { return a._dist - b._dist; });
+  filtered.forEach(function(s) { s._dist = haversineKm(userLat, userLon, s.lat, s.lon); });
+  filtered.sort(function(a,b) { return a._dist - b._dist; });
   var el = document.getElementById('spotList');
   if (!filtered.length) { el.innerHTML = '<div class="empty">No spots match your filters</div>'; return; }
   el.innerHTML = filtered.map(function(s) {
-    var stars = '★'.repeat(s.rating) + '☆'.repeat(5 - s.rating);
-    var color = (s.type && typeColorMap[s.type]) ? typeColorMap[s.type] : '#888';
+    var stars = '★'.repeat(s.rating) + '☆'.repeat(5-s.rating);
+    var color = getTypeColor(s.type);
     return '<div class="spot-card">'
-      + (s.photo ? '<img class="spot-card-img" src="' + s.photo + '">' : '')
+      + (s.photo_url ? '<img class="spot-card-img" src="' + s.photo_url + '">' : '')
       + '<div class="spot-card-body">'
       + '<div class="spot-card-info" onclick="flyToSpot(' + s.id + ')">'
       + '<div class="spot-name">' + s.name + '</div>'
@@ -661,19 +621,35 @@ function flyToSpot(id) {
 }
 
 function switchTab(tab) {
-  ['add','list','settings'].forEach(function(t) {
-    document.getElementById('tab-' + t).classList.toggle('active', t === tab);
-  });
-  document.querySelectorAll('.tab').forEach(function(el, i) {
-    el.classList.toggle('active', ['add','list','settings'][i] === tab);
-  });
+  ['add','list','settings'].forEach(function(t) { document.getElementById('tab-'+t).classList.toggle('active', t===tab); });
+  document.querySelectorAll('.tab').forEach(function(el,i) { el.classList.toggle('active', ['add','list','settings'][i]===tab); });
 }
 
-spots.forEach(addMarkerForSpot);
-renderTypeChips();
-buildFilters();
-renderList();
-document.getElementById('settings-stat').textContent = spots.length + ' spot' + (spots.length !== 1 ? 's' : '') + ' saved';
+function updateStatCount() {
+  document.getElementById('settings-stat').textContent = spots.length + ' spot' + (spots.length !== 1 ? 's' : '') + ' in Supabase';
+}
+
+async function init() {
+  var syncEl = document.getElementById('sync-status');
+  syncEl.textContent = 'Syncing...';
+  var tRes = await sb.from('types').select('*').order('id');
+  if (tRes.error) { syncEl.textContent = 'Connection error'; return; }
+  types = tRes.data;
+  colorIdx = types.length;
+
+  var sRes = await sb.from('spots').select('*').order('created_at', { ascending: false });
+  if (sRes.error) { syncEl.textContent = 'Connection error'; return; }
+  spots = sRes.data;
+
+  syncEl.textContent = '';
+  spots.forEach(addMarkerForSpot);
+  renderTypeChips();
+  buildFilters();
+  renderList();
+  updateStatCount();
+}
+
+init();
 </script>
 </body>
 </html>
