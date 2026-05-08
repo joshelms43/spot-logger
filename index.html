@@ -279,6 +279,7 @@ if (navigator.geolocation) {
     userLon = pos.coords.longitude;
     userMarker.setLatLng([userLat, userLon]);
     document.getElementById('loc-status').textContent = 'Location ready';
+    renderList();
   }, function() {
     document.getElementById('loc-status').textContent = 'Location unavailable';
   }, { enableHighAccuracy: true });
@@ -454,10 +455,12 @@ function addSpot() {
   spots.push(spot);
   save();
   addMarkerForSpot(spot);
+  applyMarkers();
   renderList();
+  var flyLat = lat, flyLon = lon;
   resetAddForm();
-  map.flyTo([lat, lon], 15);
   switchTab('list');
+  setTimeout(function() { map.flyTo([flyLat, flyLon], 15); }, 150);
 }
 
 function resetAddForm() {
